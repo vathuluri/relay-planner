@@ -59,8 +59,8 @@ function render(){
   $('agent-total').textContent=tasks.filter(t=>t.owner!=='human').length;
   $('pending-total').textContent=pending.length;$('review-count').textContent=pending.length;$('done-total').textContent=tasks.filter(t=>t.status==='done').length;
   $('calendar-page').hidden=page!=='calendar';$('review-page').hidden=page!=='review';
-  $('heading').textContent=page==='calendar'?'Your week, in sync.':'A human touch, before it ships.';
-  $('subtitle').textContent=page==='calendar'?'A little structure. A lot more forward.':'Good work gets better with your perspective.';
+  $('heading').textContent=page==='calendar'?'Keep good work moving.':'Ready for your review.';
+  $('subtitle').textContent=page==='calendar'?'One calendar for your team, your agents, and what comes next.':'Review the outcome. Decide the next step.';
   $('page-label').textContent=page==='calendar'?'Calendar':'Needs review';
   document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
   const queued=tasks.filter(t=>!t.date);$('queue-total').textContent=queued.length;$('unscheduled-count').textContent=queued.length;

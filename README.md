@@ -46,6 +46,6 @@ Brand tokens reference the existing portfolio: Poppins, primary #2563eb, seconda
 
 Private preview: https://relay-planner-demo.beefymerit10.chatgpt.site
 
-Validation: four automated tests pass, covering date boundaries, the month grid, rescheduling state preservation, and DOM interactions for creation, local saving, approval, requesting changes, undo, queue creation and view switching. Visual desktop/mobile browser QA remains unverified: local browser access timed out and the private hosted preview required an inactive ChatGPT browser sign-in. DOM checks do not verify layout, drag gestures or native date controls.
+Validation: four automated tests pass, covering date boundaries, the month grid, rescheduling state preservation, and DOM interactions for creation, local saving, approval, requesting changes, undo, queue creation and view switching. Visual layout checked in a browser at 1440 × 1000 (desktop) and 390 × 844 (phone). Captures are in docs/screenshots. Automated DOM checks do not verify drag gestures or native date controls.
 
 Keep development in this checkout. Do not commit credentials, customer tasks, private agent conversations, real resumes, employer material, or execution logs.
