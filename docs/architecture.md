@@ -4,7 +4,7 @@
 
 React/Next.js serves the calendar, task editor and review queue. PostgreSQL stores workspace-owned plans, occurrences, execution attempts and events. A worker materializes recurring occurrences and detects expired leases. External runners execute work; an MCP adapter calls the same application service as the UI and API.
 
-Authentication and tenant authorization must be implemented before private customer data or external agent access is enabled. The demo is a separate read-only synthetic workspace.
+Authentication and tenant authorization must be implemented before private customer data or external agent access is enabled. The prototype is an interactive synthetic workspace whose edits are local to each browser; it has no shared backend or execution permissions.
 
 ## Records
 

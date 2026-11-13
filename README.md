@@ -16,7 +16,9 @@ The calendar is the planning surface. Existing agent runners continue executing 
 
 ## Repository status
 
-Project foundation only: product scope, architecture, task contract, and implementation milestones. No application, authentication, scheduler, integrations, or deployment has been implemented yet.
+The first interactive calendar prototype is implemented: week/month views, a phone agenda, an unscheduled queue, task editing and rescheduling, human/agent assignments, a simulated review queue, undo, and browser-local saving. All sample content is synthetic.
+
+This is a frontend demo, not an agent runner. No authentication, shared database, recurring scheduler, external agent connection or real approval enforcement is implemented. Changes stay in the current browser. A private hosted preview does not turn local storage into a private multi-user workspace.
 
 ## Design direction
 
@@ -31,6 +33,14 @@ Reuse the established portfolio brand's visual language after extracting its act
 
 ## Development
 
-Use Node.js 24 LTS for the application implementation. Planned stack: TypeScript, React/Next.js, PostgreSQL, and an independent worker. These are initial implementation choices, not installed dependencies or functioning services.
+Use Node.js 24 LTS. This first visual/interaction prototype uses dependency-free HTML, CSS and browser modules. The later application architecture remains TypeScript, React/Next.js, PostgreSQL and an independent worker.
+
+```sh
+npm run dev   # http://localhost:3210
+npm test      # date and rescheduling tests
+npm run build # static output in dist/
+```
+
+Brand tokens reference the existing portfolio: Poppins, primary #2563eb, secondary #1e40af, text #1f2937, muted #6b7280, surfaces #ffffff / #f9fafb and borders #e5e7eb.
 
 Keep development in this checkout. Do not commit credentials, customer tasks, private agent conversations, real resumes, employer material, or execution logs.

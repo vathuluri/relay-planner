@@ -3,7 +3,7 @@
 - Read README.md, docs/product.md, docs/architecture.md and ROADMAP.md first.
 - Build a generic product for multiple customers. Use fictional projects and synthetic data in demos, tests and screenshots.
 - Keep private customer planning separate from the portfolio demo. Never commit real tasks, private artifacts, credentials, agent transcripts, resumes or employer data.
-- The current repository is a foundation, not a running product. State implementation and validation status accurately.
+- The current repository contains a browser-local interactive prototype, not a production scheduler. State implementation and validation status accurately.
 - Use the existing brand after inspecting its real source tokens; do not invent a match or copy another product's branding.
 - Keep the calendar compact and accessible on mobile. Provide keyboard actions for operations that support dragging.
 - API, MCP and UI use the same authorization and task-state rules. Never bypass approval through an integration.
