@@ -2,10 +2,11 @@
 
 ## 1. Calendar prototype
 
-- Extract actual brand tokens and reusable layout conventions.
-- Build a compact week/month calendar and mobile agenda using synthetic data.
-- Add task creation, editing, rescheduling and an unscheduled queue.
-- Verify keyboard interaction, phone layouts and timezone display.
+- [x] Extract actual brand tokens and reusable layout conventions.
+- [x] Build a compact week/month calendar and mobile agenda using synthetic data.
+- [x] Add task creation, editing, rescheduling and an unscheduled queue.
+- [x] Add automated calendar and DOM interaction checks.
+- [ ] Visually verify keyboard interaction, phone layouts and timezone display in an authenticated browser.
 
 ## 2. Private workspace
 

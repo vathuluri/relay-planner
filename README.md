@@ -37,10 +37,15 @@ Use Node.js 24 LTS. This first visual/interaction prototype uses dependency-free
 
 ```sh
 npm run dev   # http://localhost:3210
-npm test      # date and rescheduling tests
+npm ci       # install development-only DOM test dependencies
+npm test      # calendar dates, rescheduling and DOM interaction checks
 npm run build # static output in dist/
 ```
 
 Brand tokens reference the existing portfolio: Poppins, primary #2563eb, secondary #1e40af, text #1f2937, muted #6b7280, surfaces #ffffff / #f9fafb and borders #e5e7eb.
+
+Private preview: https://relay-planner-demo.beefymerit10.chatgpt.site
+
+Validation: four automated tests pass, covering date boundaries, the month grid, rescheduling state preservation, and DOM interactions for creation, local saving, approval, requesting changes, undo, queue creation and view switching. Visual desktop/mobile browser QA remains unverified: local browser access timed out and the private hosted preview required an inactive ChatGPT browser sign-in. DOM checks do not verify layout, drag gestures or native date controls.
 
 Keep development in this checkout. Do not commit credentials, customer tasks, private agent conversations, real resumes, employer material, or execution logs.
