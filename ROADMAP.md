@@ -1,34 +1,38 @@
-# Implementation milestones
+# Implementation roadmap
 
-## 1. Calendar prototype
+## Implemented: calendar prototype
 
-- [x] Extract actual brand tokens and reusable layout conventions.
-- [x] Build a compact week/month calendar and mobile agenda using synthetic data.
-- [x] Add task creation, editing, rescheduling and an unscheduled queue.
-- [x] Add automated calendar and DOM interaction checks.
-- [ ] Visually verify keyboard interaction, phone layouts and timezone display in an authenticated browser.
+- Week/month calendar and compact phone agenda.
+- Task editing, rescheduling, unscheduled queue and local saving.
+- Synthetic human/agent task review and undo.
+- Four automated tests and desktop/phone screenshots.
 
-## 2. Private workspace
+## Next: employee time-tracking prototype
 
-- Add authentication, workspace membership and PostgreSQL migrations.
-- Persist tasks, owners, projects and activity events.
-- Verify tenant isolation before using real customer data.
+- Manual time entries with project, date, integer-minute duration and work summary.
+- Start/stop timer, interruption recovery and explicit duration review.
+- Weekly totals by day and project, separated from planned work.
+- CSV export with spreadsheet-formula protection.
+- Tests for totals, week boundaries, validation and persisted timer recovery.
 
-## 3. One human-agent handoff
+## Shared workspace
 
-- Implement API claims, lease heartbeats, idempotency and result submission.
-- Add Needs review, reviewer decisions and Needs attention recovery.
-- Prove concurrency and recovery with an offline fake runner.
-- Connect one real runner with restricted credentials.
+- Authentication, membership, tenant isolation and durable storage.
+- Employee/manager permissions and explicit review assignments.
+- Draft, submitted, returned and approved timesheet versions.
+- Server-enforced edit locks, review decisions and audit history.
+- Tests for cross-tenant access, self-approval and concurrent edits.
 
-## 4. Recurrence and agent interoperability
+## Agent integrations
 
-- Add timezone-aware recurring plans and occurrence materialization.
-- Add an MCP adapter with the same authorization rules.
-- Integrate additional runners without duplicating lifecycle logic.
+- Separate execution records and runtime from employee labor.
+- Scoped runner connections, atomic claims, leases and idempotency.
+- Human review of results; no automatic employee time creation.
+- Recurring plans and additional runner adapters after one flow is reliable.
 
-## 5. Portfolio release
+## Open-source release quality
 
-- Publish an isolated demo with fictional customer content.
-- Document architecture, actual validation and limitations.
-- Add screenshots and a deployment walkthrough after the product works.
+- Synthetic examples and clear current-feature documentation.
+- Contributor guide, license selection and continuous integration.
+- Accessibility checks and complete keyboard interaction verification.
+- A separate, isolated demonstration; no customer records in Git history.

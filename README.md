@@ -1,51 +1,48 @@
 # Relay Planner
 
-Working title for a shared planning calendar for people and agents.
+An open-source, calendar-first time tracker for teams working with people and agents.
 
-Plan work, assign a human or agent owner, follow execution, and review the result in one workspace. This is a standalone product; the public demo will use fictional projects and synthetic tasks. Real customer planning stays private.
+Employees plan work, record what they actually did, and submit weekly timesheets for review. Managers review project hours and outcomes. Agent execution is tracked separately from employee labor so automated work is never presented as hours a person worked.
 
-## First release
+## Current implementation
 
-- Week and month calendar, with a compact day agenda on phones.
-- Unscheduled task queue and drag-to-reschedule.
-- Human and agent assignments, recurring tasks, and workspace timezones.
-- Review queue, attached results, and an activity history.
-- API for external agents, followed by an MCP adapter using the same operations.
+Interactive browser-local calendar prototype: week/month views, phone agenda, task editing and rescheduling, unscheduled queue, human/agent assignments, simulated task review, undo and local saving. All sample content is synthetic.
 
-The calendar is the planning surface. Existing agent runners continue executing tasks; the first integration reports work into Relay before dispatch is added.
+Time entry, timers, timesheet submission, manager approval, exports, authentication and shared persistence are **planned, not implemented**. The current review queue reviews task outcomes, not timesheets. Do not use this prototype for real employee records.
 
-## Repository status
+## Product workflow
 
-The first interactive calendar prototype is implemented: week/month views, a phone agenda, an unscheduled queue, task editing and rescheduling, human/agent assignments, a simulated review queue, undo, and browser-local saving. All sample content is synthetic.
+1. Plan tasks in the calendar and assign a person or agent.
+2. Record actual employee time with a timer or manual duration, project and work summary.
+3. Review the weekly timesheet, resolve missing descriptions and submit.
+4. A manager approves or returns it with feedback.
+5. Export approved project hours and work summaries.
 
-This is a frontend demo, not an agent runner. No authentication, shared database, recurring scheduler, external agent connection or real approval enforcement is implemented. Changes stay in the current browser. A private hosted preview does not turn local storage into a private multi-user workspace.
-
-## Design direction
-
-Reuse the established portfolio brand's visual language after extracting its actual typography, colors, and component conventions. Use TryPost as inspiration for calendar density and queue interaction, with original product design and implementation. Do not copy its branding or assets.
-
-## Documents
-
-- [Product scope](docs/product.md)
-- [Architecture and integration contract](docs/architecture.md)
-- [Implementation milestones](ROADMAP.md)
-- [Synthetic task example](examples/task.json)
+Planned schedules do not automatically become time entries. Agent runtime and employee time are separate measures. The product reports declared work; it does not monitor screens, keystrokes or employee activity.
 
 ## Development
 
-Use Node.js 24 LTS. This first visual/interaction prototype uses dependency-free HTML, CSS and browser modules. The later application architecture remains TypeScript, React/Next.js, PostgreSQL and an independent worker.
+Use Node.js 24 LTS.
 
 ```sh
+npm ci
 npm run dev   # http://localhost:3210
-npm ci       # install development-only DOM test dependencies
-npm test      # calendar dates, rescheduling and DOM interaction checks
-npm run build # static output in dist/
+npm test
+npm run build
 ```
 
-Brand tokens reference the existing portfolio: Poppins, primary #2563eb, secondary #1e40af, text #1f2937, muted #6b7280, surfaces #ffffff / #f9fafb and borders #e5e7eb.
+The prototype uses HTML, CSS and browser modules. The planned shared application uses TypeScript, React/Next.js, PostgreSQL and an independent worker. Brand: Poppins, primary #2563eb, neutral surfaces and compact responsive layouts.
 
-Private preview: https://relay-planner-demo.beefymerit10.chatgpt.site
+## Documentation
 
-Validation: four automated tests pass, covering date boundaries, the month grid, rescheduling state preservation, and DOM interactions for creation, local saving, approval, requesting changes, undo, queue creation and view switching. Visual layout checked in a browser at 1440 × 1000 (desktop) and 390 × 844 (phone). Captures are in docs/screenshots. Automated DOM checks do not verify drag gestures or native date controls.
+- [Product scope](docs/product.md)
+- [Architecture](docs/architecture.md)
+- [Roadmap](ROADMAP.md)
+- [Desktop screenshot](docs/screenshots/desktop.jpg)
+- [Phone screenshot](docs/screenshots/mobile.jpg)
 
-Keep development in this checkout. Do not commit credentials, customer tasks, private agent conversations, real resumes, employer material, or execution logs.
+Private hosted prototype: https://relay-planner-demo.beefymerit10.chatgpt.site
+
+Four automated tests cover calendar dates, rescheduling and DOM interactions. Layout checked at 1440 × 1000 and 390 × 844. Drag gestures and native date controls still need manual verification. The screenshots show the calendar prototype before time tracking is added.
+
+Keep customer records, employee timesheets, credentials and employer material out of this repository.

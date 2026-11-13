@@ -46,3 +46,13 @@ Materialize occurrences with a unique plan-and-recurrence identity to prevent du
 ## Validation milestones
 
 Test tenant isolation, concurrent claims, lease-token fencing, idempotency conflicts, recurrence across daylight-saving changes, review authorization and interrupted side-effect recovery. Use fake runners and synthetic artifacts without paid APIs.
+
+## Employee time tracking (planned)
+
+Add TimeEntry (workspace, employee, local work date, project, optional task, integer duration minutes, summary and revision), TimerSession (employee, server start/stop instants and recovery state), Timesheet (employee, workspace timezone, week identity and status), TimesheetVersion (immutable submitted entry snapshot and totals), and ReviewDecision (reviewer, version, decision, reason and timestamp).
+
+Time entries are distinct from execution attempts. Agent runtime cannot populate employee labor. Each employee has at most one running timer, enforced transactionally. An interrupted timer requires explicit reconciliation before its duration enters a timesheet. Use server instants for shared timers and preserve the employee-selected work date.
+
+Submit and review operations run in transactions with expected revisions and idempotency keys. Submission snapshots entries; server-side permissions prevent changes to submitted/approved versions and prohibit self-approval. Reopening creates an audited revision without overwriting previously approved records. Managers require explicit workspace/team scope. Exports use approved snapshots and protect CSV cells against spreadsheet formula injection.
+
+These records and controls are design requirements, not functionality present in the current browser-local prototype.

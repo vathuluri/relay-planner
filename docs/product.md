@@ -1,29 +1,29 @@
 # Product scope
 
-## Customer and use case
+## Customer
 
-People coordinating work performed by themselves and multiple agent systems need one calendar and a clear handoff between planning, execution and review. The first customer will use the product privately; portfolio visitors see a separate fictional workspace.
+Enterprise employees who report time against projects, and managers who need a clear weekly account of hours and delivered work. Teams may also use agents to execute tasks, but a human remains accountable for acceptance and time reporting.
 
-## Calendar
+## Primary surface
 
-Week view is the desktop default, with month navigation and an unscheduled queue. Phones open a day agenda with a date strip. Tasks show a title, owner, planned time and status. Projects supply a restrained color marker. Keep filters secondary and avoid large empty cards.
+A compact calendar connects planned work to actual time. Desktop uses a week view; phones use a day agenda. A weekly timesheet provides project totals and concise descriptions without requiring many filters.
 
-Every drag operation has an accessible edit/reschedule alternative. Timezones are explicit. Store instants in UTC, recurrence rules in the workspace's IANA timezone, and all-day dates as local dates rather than midnight UTC.
+## Time reporting
 
-## Task lifecycle
+An employee can enter a duration manually or start and stop a timer. Each entry includes date, project, task when applicable, duration and work summary. Store duration as integer minutes. Do not infer labor from scheduled time, task completion or agent activity. Warn about overlapping entries and unusually large totals; never silently change reported time.
 
-Planned → Working → Needs review → Done.
+Weekly timesheets move Draft → Submitted → Approved, or Returned → Draft. Submission captures a version of entries and totals. Submitted and approved entries cannot be silently edited; changes require returning or reopening the timesheet with a recorded reason. The employee cannot approve their own sheet. Task review is a separate workflow.
 
-Tasks can also be canceled or marked Needs attention. An expired agent lease leads to Needs attention; it does not prove that the agent stopped or that an external action failed. Completed occurrences remain historical records when recurring plans change.
+Employees can export project/date/duration/summary information. Managers can review only the teams they are authorized to access. Payroll integrations, invoicing and legal compliance claims are outside the initial scope.
 
-## Ownership and review
+## Human and agent work
 
-Each task has one accountable human or agent owner. A reviewer can differ from that owner. Instructions include acceptance criteria and allowed actions. An agent submits evidence and a result summary; where approval is required, only an authorized reviewer completes the handoff. Publishing and applying changes remain separate recorded actions.
+Tasks move Planned → Working → Needs review → Done, with Needs attention for uncertain runs. Agent runtime, model usage and employee labor remain separate. Employees may log time spent directing or reviewing an agent, but agent execution never creates employee hours automatically.
 
-## First integration
+## Privacy
 
-Connect one runner through the API. It can list its assignments, claim a task, send a heartbeat, report progress, attach a result link and request review. Add MCP as an adapter after this flow works. Later providers can include Codex, Claude and other agents without product logic depending on any particular model.
+No screenshots, keystroke logging or inferred productivity scores. Actual customer data requires authentication, tenant isolation, access controls and durable storage. The public repository and demonstration use synthetic data only.
 
-## Out of scope initially
+## Calendar and accessibility
 
-Social-network publishing, billing, autonomous agent provisioning, embedded model execution, replacing existing runner schedulers, and broad third-party integrations.
+Week/month navigation, phone agenda and unscheduled queue. Every drag action has a keyboard-accessible edit alternative. Workspace timezone and week boundaries must be explicit. Preserve local work dates separately from UTC execution timestamps.
