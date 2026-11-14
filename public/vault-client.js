@@ -1,4 +1,5 @@
 import {createVaultKeys,unlockVault,seal,open,keyId} from './crypto.js';
+import {authenticatedFetch} from './auth-fetch.js';
 const $=id=>document.getElementById(id);
 export function downloadPrivate(name,value){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 async function deviceKey(accountId,value){
@@ -7,7 +8,7 @@ async function deviceKey(accountId,value){
 }
 async function confirmMigration(data){if(data.vault?.migratedFeedVersion)await request({action:'confirm-migration',accountId:data.accountId,version:data.version},'POST');}
 export const forgetDevice=accountId=>deviceKey(accountId,null);
-async function request(body,method='PUT'){const r=await fetch('/.netlify/functions/schedules',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const value=await r.json();if(!r.ok)throw Error(value.error||'Encrypted save failed.');return value;}
+async function request(body,method='PUT'){const r=await authenticatedFetch('/.netlify/functions/schedules',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const value=await r.json();if(!r.ok){const error=Error(value.error||'Encrypted save failed.');error.status=r.status;throw error;}return value;}
 export async function decodeSchedule(data,privateKey){
  if(!data.vault)throw Error('This account needs migration.');
  if(await keyId(data.vault.keys.publicKey)!==data.vault.keys.keyId)throw Error('Encryption key does not match.');
@@ -18,33 +19,34 @@ export async function decodeSchedule(data,privateKey){
 }
 export async function prepareVault(data){
  const panel=$('vault-gate');$('account-form').hidden=true;document.querySelector('.account-actions').hidden=true;panel.hidden=false;
- const existing=!!data.vault;let generated=null,privateKey=null;$('vault-submit').disabled=!existing;$('vault-backed-up').onchange=()=>{$('vault-submit').disabled=!generated||!$('vault-backed-up').checked;};
+ const existing=!!data.vault;let generated=null,privateKey=null,committedVersion=null;$('account-message').textContent='Signed in. Complete the private encryption step below.';$('vault-submit').disabled=!existing;$('vault-backed-up').onchange=()=>{$('vault-submit').disabled=!generated||!$('vault-backed-up').checked;};
  $('vault-title').textContent=existing?'Unlock your schedule':'Encrypt your schedule';
  $('vault-setup').hidden=existing;$('vault-unlock').hidden=!existing;
  if(existing){try{const cached=await deviceKey(data.accountId);if(cached?.keyId===data.vault.keys.keyId){await decodeSchedule(data,cached.privateKey);await confirmMigration(data);panel.hidden=true;return {privateKey:cached.privateKey,keys:data.vault.keys};}}catch{} }
  return await new Promise(resolve=>{
-  $('vault-generate').onclick=async()=>{const b=$('vault-generate');b.disabled=true;try{generated=await createVaultKeys(data.accountId);downloadPrivate('relay-recovery-key.json',{warning:'Keep private. Anyone with this key and your account access can decrypt your schedule. Losing it may permanently lose access.',accountId:data.accountId,recoveryKey:generated.recovery});$('vault-ready').hidden=false;$('vault-message').textContent='Recovery file downloaded. Store it privately before continuing. Do not send it in chat.';}catch{$('vault-message').textContent='Could not generate keys. Try again.';b.disabled=false;}};
+  $('vault-generate').onclick=async()=>{const b=$('vault-generate');b.disabled=true;b.textContent='Generating recovery file…';try{generated=await createVaultKeys(data.accountId);downloadPrivate('relay-recovery-key.json',{warning:'Keep private. Anyone with this key and your account access can decrypt your schedule. Losing it may permanently lose access.',accountId:data.accountId,recoveryKey:generated.recovery,keys:generated.record});$('vault-ready').hidden=false;$('vault-message').textContent='Recovery file downloaded. Store it privately before continuing. Do not send it in chat.';b.textContent='Recovery file downloaded';}catch{$('vault-message').textContent='Could not generate keys. Try again.';b.disabled=false;b.textContent='Download recovery key';}};
+  $('vault-import').onchange=async()=>{try{const file=$('vault-import').files[0];if(!file)return;const backup=JSON.parse(await file.text());if(backup.accountId!==data.accountId)throw Error();const record=existing?data.vault.keys:backup.keys;if(!record)throw Error('Use the new recovery file format, or generate a new key before migration.');const recovered=await unlockVault(record,backup.recoveryKey,data.accountId);if(existing){$('vault-secret').value=backup.recoveryKey;}else{generated={privateKey:recovered,record,recovery:backup.recoveryKey};$('vault-ready').hidden=false;$('vault-generate').disabled=true;$('vault-message').textContent='Saved recovery file loaded on this device. Confirm its private backup, then Continue.';}}catch{$('vault-message').textContent='This recovery file cannot unlock this account. Nothing was uploaded.';}finally{$('vault-import').value='';}};
   $('vault-form').onsubmit=async event=>{event.preventDefault();const b=$('vault-submit');b.disabled=true;
-   try{
+   b.textContent=existing?'Unlocking…':'Encrypting and verifying…';try{
     let keys;
     if(existing){keys=data.vault.keys;privateKey=await unlockVault(keys,$('vault-secret').value,data.accountId);$('vault-secret').value='';await decodeSchedule(data,privateKey);await confirmMigration(data);}
     else{
      if(!generated||!$('vault-backed-up').checked)throw Error('Download and privately save your recovery key first.');
      privateKey=generated.privateKey;keys=generated.record;
-     const envelope=await seal({tasks:data.tasks},keys.publicKey,data.accountId,'schedule');
+     const envelope=committedVersion?null:await seal({tasks:data.tasks},keys.publicKey,data.accountId,'schedule');
      // Verify locally before uploading; the backend never receives recovery material.
-     if(JSON.stringify((await open(envelope,privateKey,data.accountId,'schedule')).tasks)!==JSON.stringify(data.tasks))throw Error('Local verification failed.');
-     const saved=await request({accountId:data.accountId,version:data.version,feedVersion:data.feedVersion,migrate:true,keys,envelope});
-     const r=await fetch('/.netlify/functions/schedules',{cache:'no-store'}),verified=await r.json();
-     if(!r.ok||verified.accountId!==data.accountId||verified.version!==saved.version)throw Error('Migration needs a refresh to verify. Keep your recovery key.');
+     if(envelope){if(JSON.stringify((await open(envelope,privateKey,data.accountId,'schedule')).tasks)!==JSON.stringify(data.tasks))throw Error('Local verification failed.');const saved=await request({accountId:data.accountId,version:data.version,feedVersion:data.feedVersion,migrate:true,keys,envelope});committedVersion=saved.version;}
+     const r=await authenticatedFetch('/.netlify/functions/schedules'),verified=await r.json();
+     if(r.status===401){const error=Error('Sign in required.');error.status=401;throw error;}
+     if(!r.ok||verified.accountId!==data.accountId||verified.version!==committedVersion)throw Error('Migration needs a refresh to verify. Keep your recovery key.');
      const roundtrip=await decodeSchedule(verified,privateKey);
      if(JSON.stringify(roundtrip)!==JSON.stringify(data.tasks))throw Error('Migration verification failed. Keep your recovery key.');
-     await request({action:'confirm-migration',accountId:data.accountId,version:saved.version},'POST');
+     await request({action:'confirm-migration',accountId:data.accountId,version:committedVersion},'POST');
      Object.assign(data,verified);generated.recovery='';generated=null;
     }
     if($('vault-remember').checked)await deviceKey(data.accountId,{keyId:keys.keyId,privateKey});
     panel.hidden=true;resolve({privateKey,keys});
-   }catch(err){$('vault-message').textContent=existing?'Could not unlock. Check your recovery key.':err.message;}finally{b.disabled=false;}
+   }catch(err){if(err.status===401){$('vault-message').textContent='Your session needs renewal. Sign in above, then Continue. Your generated recovery key is preserved in this page.';document.dispatchEvent(new CustomEvent('relay:reauth',{detail:{accountId:data.accountId}}));}else{$('vault-message').textContent=existing?'Could not unlock. Check your recovery key.':err.message;}}finally{b.disabled=false;b.textContent='Continue';}
   };
  });
 }
