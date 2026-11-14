@@ -1,4 +1,5 @@
-import {feedKey} from './activity.mjs';
+import {feedKey,encryptedFeedKey} from './activity.mjs';
+import {FORMAT,validateEnvelope,validateKeys} from './envelopes.mjs';
 const projects=new Set(['launch','engineering','content']);
 const owners=new Set(['human','code','research','writing','automation']);
 const statuses=new Set(['planned','working','review','done','attention']);
@@ -21,20 +22,42 @@ export function validateTasks(input){
 const headers={'Cache-Control':'private, no-store','Vary':'Cookie, Authorization','X-Content-Type-Options':'nosniff'};
 const reply=(data,status=200)=>Response.json(data,{status,headers});
 export function createScheduleHandler({getUser,getStore}){return async req=>{
- let user;try{user=await getUser();}catch{return reply({error:'Sign in required.'},401);}
- if(typeof user?.id!=='string'||!user.id||user.id.length>200)return reply({error:'Sign in required.'},401);
- if(!['GET','PUT'].includes(req.method))return new Response(null,{status:405,headers:{...headers,Allow:'GET, PUT'}});
+ let user;try{user=await getUser();}catch{}if(typeof user?.id!=='string'||!user.id||user.id.length>200)return reply({error:'Sign in required.'},401);
+ if(!['GET','PUT','POST'].includes(req.method))return reply({error:'Method not allowed.'},405);
  const key='users/'+encodeURIComponent(user.id)+'/schedule';
  try{
   const store=getStore();
-  if(req.method==='GET'){const found=await store.getWithMetadata(key,{type:'json',consistency:'strong'});const feed=await store.getWithMetadata(feedKey(user.id),{type:'json',consistency:'strong'});return reply({tasks:[...(found?.data?.tasks??[]),...(feed?.data?.records??[]).map(r=>r.task)],version:found?.etag??null,accountId:user.id,feedVersion:feed?.etag??null});}
+  if(req.method==='GET'){
+   const found=await store.getWithMetadata(key,{type:'json',consistency:'strong'});
+   if(found?.data?.format===FORMAT){const feed=await store.getWithMetadata(encryptedFeedKey(user.id),{type:'json',consistency:'strong'});return reply({vault:found.data,version:found.etag,accountId:user.id,feed:feed?.data?.records??[],feedVersion:feed?.etag??null});}
+   const feed=await store.getWithMetadata(feedKey(user.id),{type:'json',consistency:'strong'});
+   return reply({migrationRequired:true,tasks:[...(found?.data?.tasks??[]),...(feed?.data?.records??[]).map(r=>r.task)],version:found?.etag??null,accountId:user.id,feedVersion:feed?.etag??null});
+  }
   if(req.headers.get('origin')!==new URL(req.url).origin)return reply({error:'Request origin refused.'},403);
   if(!req.headers.get('content-type')?.startsWith('application/json'))return reply({error:'JSON required.'},415);
-  if(Number(req.headers.get('content-length'))>1_000_000)return reply({error:'Schedule too large.'},413);
-  const raw=await req.text();if(new TextEncoder().encode(raw).length>1_000_000)return reply({error:'Schedule too large.'},413);
-  let body,tasks;try{body=JSON.parse(raw);if(body.accountId!==user.id)return reply({error:'Account changed. Sign in again before saving.'},409);tasks=validateTasks(body.tasks);if(body.version!==null&&(typeof body.version!=='string'||body.version.length>200))throw Error();}catch{return reply({error:'Invalid schedule.'},400);}
-  const result=await store.setJSON(key,{tasks,updatedAt:new Date().toISOString()},body.version===null?{onlyIfNew:true}:{onlyIfMatch:body.version});
-  if(!result.modified)return reply({error:'This schedule changed on another device. Refresh before trying again.'},409);
+  const raw=await req.text();if(Buffer.byteLength(raw)>2_100_000)return reply({error:'Schedule too large.'},413);
+  let body;try{body=JSON.parse(raw);}catch{return reply({error:'Invalid request.'},400);}
+  if(body.accountId!==user.id)return reply({error:'Account changed. Sign in again.'},409);
+  const found=await store.getWithMetadata(key,{type:'json',consistency:'strong'});
+  // Cleanup follows browser readback and verification of the committed migration.
+  if(req.method==='POST'){
+   if(body.action!=='confirm-migration'||found?.data?.format!==FORMAT||found.etag!==body.version)return reply({error:'Migration changed. Refresh first.'},409);
+   const legacy=await store.getWithMetadata(feedKey(user.id),{type:'json',consistency:'strong'});
+   if(legacy){if(legacy.etag!==found.data.migratedFeedVersion)return reply({error:'Legacy activity changed; cleanup refused.'},409);await store.delete(feedKey(user.id));}
+   return reply({confirmed:true,legacyActivityRemoved:true});
+  }
+  if((found?.etag??null)!==body.version)return reply({error:'Schedule changed on another device. Refresh first.'},409);
+  let keys,envelope;try{keys=validateKeys(body.keys);envelope=validateEnvelope(body.envelope);}catch{return reply({error:'Encrypted schedule required. Update this browser.'},400);}
+  if(found?.data?.format===FORMAT&&JSON.stringify(keys)!==JSON.stringify(found.data.keys))return reply({error:'Encryption key replacement is not supported.'},409);
+  let migratedFeedVersion=found?.data?.migratedFeedVersion??null;
+  if(found?.data?.format!==FORMAT){
+   const legacy=await store.getWithMetadata(feedKey(user.id),{type:'json',consistency:'strong'});
+   if(!body.migrate||(legacy?.etag??null)!==body.feedVersion)return reply({error:'Migration source changed. Refresh first.'},409);
+   migratedFeedVersion=legacy?.etag??null;
+  }
+  const vault={format:FORMAT,keys,envelope,migratedFeedVersion};
+  const result=await store.setJSON(key,vault,body.version===null?{onlyIfNew:true}:{onlyIfMatch:body.version});
+  if(!result.modified)return reply({error:'Schedule changed on another device. Refresh first.'},409);
   return reply({version:result.etag});
  }catch{return reply({error:'Schedule unavailable. Please try again.'},503);}
 };}

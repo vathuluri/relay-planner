@@ -1,17 +1,25 @@
-# Private data and encryption requirements
+# Private records and encryption
 
-Source code, tests and demonstration fixtures can be public. Customer schedules, activity, transcripts and credentials cannot enter Git history, public builds, analytics or application logs.
+Source code, tests and demonstration fixtures can be public. Customer records, credentials, recovery files and transcripts must never enter Git history, builds or application logs.
 
-The current hosted schedule implementation uses authenticated, account-isolated backend storage. It is not end-to-end encrypted: application servers process readable task content. Provider-managed encryption at rest and HTTPS do not make that content inaccessible to the provider. Existing records require migration; blocking new agent reporting does not encrypt or remove them.
+## Implemented encrypted account format
 
-Before enabling automatic reporting:
+The account browser uses Web Crypto: fresh AES-256-GCM keys and 96-bit random nonces for each save or receipt, with per-record AES keys wrapped using RSA-OAEP-3072/SHA-256. Account identity and record purpose are authenticated context, preventing cross-account/record ciphertext substitution. Servers accept encrypted envelopes only for writes. Authentication and conditional versions remain necessary; encryption does not replace authorization.
 
-- Encrypt task and receipt content on the user's device before upload, using authenticated encryption and fresh nonces. Store only encrypted envelopes on the backend.
-- Keep decryption keys outside the backend and authentication system. Agents receive a public encryption key, not the schedule decryption key. Authentication/reporting tokens remain separate from encryption keys.
-- Unlock another device with an explicit user-held recovery secret or trusted-device transfer. Email/password reset cannot recover encryption keys. Explain that losing every key means losing access.
-- Migrate existing readable records with verified decrypt/readback and explicit recovery handling. Do not silently delete or pretend old records were always encrypted. Review provider retention/backups separately.
-- Test tamper rejection, nonce handling, wrong keys, account isolation, concurrent changes, browser refresh and phone unlock. Never log plaintext or keys.
+A random 256-bit recovery secret encrypts the private RSA key in the browser. Only the encrypted private key and public encryption key go to storage. The recovery secret is downloaded directly to the owner, never sent to the backend. Password reset cannot unlock records. Another device must enter the recovery secret. A user may explicitly trust a device to persist its nonextractable CryptoKey in IndexedDB; otherwise it remains in the page's memory. Forget device key removes that remembered key. Clearing browser data also removes it. Losing every key and the recovery file means losing access.
 
-Encryption protects record content, not all metadata: the service can still observe account identifiers, request times and ciphertext sizes. It cannot protect an unlocked compromised device or malicious replacement application code. Do not promise absolute protection from every third party or interceptor.
+Agents receive a revocable append-only reporting token and public encryption key, never the private decryption key. Report contents, timestamps, source labels and links are encrypted before upload. Offline retry packets and sent-packet deduplication records contain ciphertext, not work summaries. Local source files explicitly supplied to a reporter remain the owner's responsibility.
 
-Status: requirements only. End-to-end encryption and migration are not implemented yet. Agent reporting is disabled at deployed function entry points pending that work.
+## Migration
+
+An authenticated owner downloads and privately backs up the recovery file, then explicitly continues. The browser reads existing records, encrypts them, verifies them locally and conditionally replaces the active readable schedule. It fetches the saved envelope and verifies exact roundtrip content before confirming removal of the separate legacy activity blob. Interrupted confirmation can resume after successful unlock. Concurrent source/version changes refuse migration rather than overwriting newer data. Existing readable schedules remain until the owner completes migration; deployment by itself does not encrypt them.
+
+Older browsers cannot write plaintext. Existing public-code demonstrations remain synthetic and browser-local, not encrypted customer accounts.
+
+## Boundaries
+
+Hosting still sees account identifiers, authentication traffic, request times, record counts and ciphertext sizes. A compromised unlocked device or malicious replacement JavaScript from the hosting origin can access plaintext and use device keys; this browser app does not protect against that threat. HTTPS protects transport. Application encryption makes stored record content unreadable without a user's private key; do not promise absolute protection from every third party.
+
+Replacing active records does not prove erasure from provider backups, previous exports or historical logs. Provider retention and deletion policies must be handled separately. No raw task bodies or keys are logged by the functions. Do not enable request-body logging or analytics that capture decrypted UI content.
+
+Automated tests cover recovery, wrong keys, tampering, context binding, tenant isolation, encrypted migration/readback, stale writes, delayed cleanup, reporting revocation, ciphertext retries and child exit codes. Live account migration and phone unlock must be verified separately. This implementation has not had an independent cryptographic security audit.

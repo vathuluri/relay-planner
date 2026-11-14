@@ -54,3 +54,7 @@ The account build now includes email signup/login/recovery, private per-account 
 This first hosted slice manages personal schedules, not shared team permissions. Production account-flow validation is pending. Time entries, timers, timesheets and external agent execution remain planned.
 
 Live account app: https://relay-planner.netlify.app/ — Netlify Identity enabled with required email confirmation. Ten automated checks pass and anonymous schedule requests are rejected. Live signed-in saving followed by a full browser reload is verified. Owner confirmed the same task appears on the phone after signing into the same account and refreshing. This is the account app; the earlier private Sites address remains the synthetic demo.
+
+## Encrypted account storage
+
+The Netlify account build encrypts schedules and agent receipts on the originating device before upload. Existing accounts must complete a recovery-file backup and explicit browser migration. Another device requires the private recovery key; email password recovery cannot decrypt data. Agent reporting uses a public encryption key and a separate append-only token. See [privacy and migration boundaries](docs/privacy-requirements.md) and [reporting setup](docs/activity-reporting.md). The public synthetic demo remains browser-local. Live migration status must be verified per account.

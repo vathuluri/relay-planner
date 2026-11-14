@@ -1,6 +1,6 @@
 # Automatic activity reporting
 
-**Deployment safety gate:** new reporting connections and activity ingestion are disabled until end-to-end encryption is implemented. The instructions below describe the pending integration, not a currently available encrypted service. Existing schedule storage is account-isolated but is not end-to-end encrypted; do not claim hosting-provider blindness.
+Reporting requires an encrypted account. Complete the recovery-key backup and migration first. Receipts are encrypted on the sending device with the account public key; the reporter cannot decrypt schedules.
 
 Relay does not scrape conversations or assume scheduled jobs executed. A connected agent or script sends an explicit completion receipt. Records include source, actual completion timestamp, optional start timestamp, result and a stable run ID. Runtime is not human work time.
 
@@ -22,7 +22,7 @@ The default config/outbox lives under ~/.config/relay-planner. RELAY_DATA_DIR ch
 node scripts/report-activity.mjs run --title "Daily checks" --kind automation --agent "Local scheduler" -- node /path/to/checks.mjs
 ```
 
-The wrapper records actual start/end, success/failure and a run ID. It sends no command line, console output, transcript, prompt or arbitrary file content. Its exit code preserves the command's outcome. A reporting failure queues the receipt locally, rather than failing a successful job. Flush retries the same run IDs:
+The wrapper records actual start/end, success/failure and a run ID. It sends no command line, console output, transcript, prompt or arbitrary file content. Its exit code preserves the command's outcome. A reporting failure queues the encrypted receipt locally, rather than failing a successful job. Flush retries the same run IDs:
 
 ```sh
 node scripts/report-activity.mjs flush
@@ -32,7 +32,7 @@ Windows batch/PowerShell scripts should be launched via their executable, e.g. p
 
 ## Agents and existing run logs
 
-An agent can write a reviewed, minimal JSON receipt and call send --file. Required fields: runId (stable per run), title (120 chars), kind (agent or automation), status (done or attention), completedAt (actual ISO timestamp with timezone). Optional: startedAt, agent, summary (4000 chars), HTTPS link. Do not invent missing timestamps or treat a planned trigger as a completed run. For timestamp-free reconstructed tasks, use the normal calendar instead.
+An agent can write a reviewed, minimal JSON receipt and call send --file. Required fields: runId (stable per run), title (120 chars), kind (agent or automation), status (done, attention or review), completedAt (actual ISO timestamp with timezone). Optional: startedAt, agent, summary (4000 chars), HTTPS link. Do not invent missing timestamps or treat a planned trigger as a completed run. For timestamp-free reconstructed tasks, use the normal calendar instead.
 
 Append-only reports are stored separately from editable schedules, so human edits cannot erase the feed. Duplicate run IDs with identical content are acknowledged once; reusing an ID with different content is rejected. Concurrent writes retry conditional updates. Imported reports are read-only in the UI. Up to 500 reports per account are retained; a full feed refuses new reports and leaves them queued locally rather than silently deleting history. Archival is not yet implemented.
 
@@ -41,3 +41,9 @@ The app checks for new records every 30 seconds while visible and not editing/sa
 ## Current integration limit
 
 Only jobs actually wired to the wrapper or receipt command report automatically. Installing a key alone does not connect every Claude, Codex or other session. Native hooks require the host's supported lifecycle event, local script availability and the user's hook trust; no host-wide hooks are installed by this project. No existing schedule is changed or resumed automatically.
+
+## Learning posts
+
+The optional scripts/report-work.mjs helper reports verified work and creates a private LinkedIn draft in Needs review when explicit public-safe learning, implementation, why, limits and actual draft creation time are supplied. It does not publish or contact LinkedIn. Review can mark a draft accepted locally; it does not imply publication. Do not feed private logs or account details into public copy.
+
+Reporter configuration includes the account public encryption key and append-only token. Keep it private even though it contains no decryption key. After changing/rotating a configuration, retain old queued ciphertext and verify key identity before replay. A missing configuration does not cause plaintext work to be queued.

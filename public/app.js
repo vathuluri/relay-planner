@@ -91,7 +91,7 @@ document.addEventListener('click',e=>{
   if(b.dataset.day){selected=b.dataset.day;cursor=parseDay(selected);view='agenda';render();return;}
   if(b.dataset.view){view=b.dataset.view;render();return;}
   if(b.dataset.page){page=b.dataset.page;render();return;}
-  if(b.dataset.approve||b.dataset.return){const id=b.dataset.approve||b.dataset.return;const approve=!!b.dataset.approve;change(approve?'Task approved and completed':'Changes requested',list=>list.map(t=>t.id===id?event({...t,status:approve?'done':'planned'},approve?'Approved in demo':'Changes requested in demo'):t));}
+  if(b.dataset.approve||b.dataset.return){const id=b.dataset.approve||b.dataset.return;const approve=!!b.dataset.approve;change(approve?'Task approved and completed':'Changes requested',list=>list.map(t=>t.id===id?event({...t,status:approve?'done':'planned'},approve?(globalThis.relaySession?'Reviewed locally; no external publication':'Approved in demo'):'Changes requested'):t));}
 });
 $('new-task').onclick=()=>openTask();$('add-idea').onclick=()=>openTask(null,'');
 for(const id of ['close-dialog','cancel-dialog'])$(id).onclick=()=>$('task-dialog').close();
