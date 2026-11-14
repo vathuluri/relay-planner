@@ -70,11 +70,16 @@ function render(){
   $('review-list').innerHTML=pending.length?pending.map(t=>`<article class="review-card"><div class="review-content"><span class="eyebrow">${projects[t.project]} · ${owners[t.owner]}</span><h3>${esc(t.title)}</h3><p>${esc(t.result||'Open the task to inspect its instructions and add the result to review.')}</p></div><div class="review-actions"><button class="button" data-task="${esc(t.id)}">Open task</button><button class="button" data-return="${esc(t.id)}">Request changes</button><button class="button primary" data-approve="${esc(t.id)}">Approve</button></div></article>`).join(''):'<div class="empty"><strong>You’re all caught up.</strong>No tasks are waiting for review.</div>';
   renderCalendar();
 }
+function syncQuickDates(){const date=$('task-date').value,choices={today:dayKey(now),tomorrow:dayKey(addDays(now,1)),later:''};document.querySelectorAll('[data-quick-date]').forEach(b=>b.setAttribute('aria-pressed',String(date===choices[b.dataset.quickDate])));const custom=date&&!Object.values(choices).includes(date);$('task-custom-date').textContent=custom?dateLabel(parseDay(date),{month:'short',day:'numeric'}):'Choose date';$('task-custom-date').setAttribute('aria-pressed',String(!!custom));}
+document.querySelectorAll('[data-quick-date]').forEach(b=>b.onclick=()=>{$('task-date').value={today:dayKey(now),tomorrow:dayKey(addDays(now,1)),later:''}[b.dataset.quickDate];syncQuickDates();});
+$('task-custom-date').onclick=()=>{$('task-options').open=true;$('task-date').focus();};
+$('task-date').oninput=syncQuickDates;
+$('task-form').addEventListener('invalid',e=>{if($('task-options').contains(e.target))$('task-options').open=true;},true);
 function openTask(id=null,date=selected){
-  editing=id;const t=tasks.find(t=>t.id===id)||{title:'',project:'launch',owner:'human',date,time:'09:00',status:'planned',notes:'',result:'',link:''};
-  $('dialog-title').textContent=id?'Task details':'New task';$('dialog-eyebrow').textContent=id?'A LITTLE CONTEXT GOES A LONG WAY':'PLAN SOMETHING GOOD';
+  editing=id;const t=tasks.find(t=>t.id===id)||{title:'',project:'launch',owner:'human',date,time:'',status:'planned',notes:'',result:'',link:''};
+  $('dialog-title').textContent=id?'Edit task':'Add a task';$('dialog-eyebrow').textContent='';$('task-options').open=false;
   for(const field of ['title','project','owner','date','time','status','notes','result','link'])$(`task-${field}`).value=t[field]||'';
-  $('delete-task').hidden=!id;
+  syncQuickDates();$('delete-task').hidden=!id;
   $('task-history').innerHTML=(t.history||[]).map(e=>`<div>${esc(dateLabel(new Date(e.at),{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))} · ${esc(e.text)}</div>`).join('');
   $('task-dialog').showModal();$('task-title').focus();
 }

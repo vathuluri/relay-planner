@@ -17,6 +17,8 @@ test('demo supports task creation, local saving, review, undo and calendar views
     const click=selector=>{const element=document.querySelector(selector);assert.ok(element,selector);element.click();};
     assert.equal(document.querySelectorAll('.day-column').length,7);
     click('#new-task');assert.equal(document.querySelector('#task-dialog').open,true);
+    assert.equal(document.querySelector('#task-options').open,false);
+    assert.equal(document.querySelector('#task-time').value,'');
     document.querySelector('#task-title').value='Synthetic QA task';
     document.querySelector('#task-date').value='2026-11-16';
     document.querySelector('#task-owner').value='code';
@@ -43,6 +45,11 @@ test('demo supports task creation, local saving, review, undo and calendar views
     document.querySelector('#task-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
     assert.ok([...document.querySelectorAll('.queue-task')].some(t=>t.textContent.includes('Queued synthetic idea')));
     assert.equal(JSON.parse(localStorage.getItem('relay-planner-demo-v1')).find(t=>t.title==='Queued synthetic idea').date,'');
+    click('#new-task');document.querySelector('#task-title').value='Title-only quick capture';click('[data-quick-date=tomorrow]');
+    const chosenDate=document.querySelector('#task-date').value;assert.ok(chosenDate);
+    document.querySelector('#task-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
+    const quick=JSON.parse(localStorage.getItem('relay-planner-demo-v1')).find(t=>t.title==='Title-only quick capture');
+    assert.equal(quick.date,chosenDate);assert.equal(quick.time,'');assert.equal(quick.owner,'human');assert.equal(quick.status,'planned');
   }finally{globalThis.setTimeout=realTimeout;dom.window.close();}
 });
 
