@@ -1,5 +1,7 @@
 # Automatic activity reporting
 
+**Deployment safety gate:** new reporting connections and activity ingestion are disabled until end-to-end encryption is implemented. The instructions below describe the pending integration, not a currently available encrypted service. Existing schedule storage is account-isolated but is not end-to-end encrypted; do not claim hosting-provider blindness.
+
 Relay does not scrape conversations or assume scheduled jobs executed. A connected agent or script sends an explicit completion receipt. Records include source, actual completion timestamp, optional start timestamp, result and a stable run ID. Runtime is not human work time.
 
 ## Connect once
