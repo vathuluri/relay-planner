@@ -53,4 +53,4 @@ The account build now includes email signup/login/recovery, private per-account 
 
 This first hosted slice manages personal schedules, not shared team permissions. Production account-flow validation is pending. Time entries, timers, timesheets and external agent execution remain planned.
 
-Live account app: https://relay-planner.netlify.app/ — Netlify Identity enabled with required email confirmation. Ten automated checks pass and anonymous schedule requests are rejected. Live signed-in saving followed by a full browser reload is verified. Actual-phone confirmation is pending. This is the account app; the earlier private Sites address remains the synthetic demo.
+Live account app: https://relay-planner.netlify.app/ — Netlify Identity enabled with required email confirmation. Ten automated checks pass and anonymous schedule requests are rejected. Live signed-in saving followed by a full browser reload is verified. Owner confirmed the same task appears on the phone after signing into the same account and refreshing. This is the account app; the earlier private Sites address remains the synthetic demo.

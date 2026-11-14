@@ -23,6 +23,6 @@ If Netlify Identity or Blobs is unavailable, access and saving fail closed. The 
 - Source branch: main, account implementation 895a2af.
 - Identity enabled; registration Open, email confirmation Required (verified in Netlify).
 - Public sign-in page loaded successfully; anonymous schedule GET returns HTTP401 with private/no-store caching.
-- Ten automated tests pass. Owner confirmed registration and account access. Agent created a synthetic task, observed Saved, reloaded the browser and verified the task remained. Actual-phone confirmation is pending; password recovery and multi-account production isolation have not been independently exercised.
+- Ten automated tests pass. Owner confirmed registration and account access. Agent created a synthetic task, observed Saved, reloaded the browser and verified the task remained. Owner confirmed phone visibility after refreshing; password recovery and multi-account production isolation have not been independently exercised.
 
 The Netlify project is separate from the personal blog and the private Sites demo. There are no paid add-ons or external agent runners configured by this setup.
