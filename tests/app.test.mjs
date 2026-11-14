@@ -45,3 +45,36 @@ test('demo supports task creation, local saving, review, undo and calendar views
     assert.equal(JSON.parse(localStorage.getItem('relay-planner-demo-v1')).find(t=>t.title==='Queued synthetic idea').date,'');
   }finally{globalThis.setTimeout=realTimeout;dom.window.close();}
 });
+
+test('cloud schedule saves only through the account API and rolls back failed writes',async()=>{
+  const dom=new JSDOM(await readFile(new URL('../public/index.html',import.meta.url),'utf8'),{url:'https://demo.example/'});
+  const {window}=dom;const document=window.document;const wrapper=document.createElement('div');wrapper.id='workspace';document.body.append(wrapper);
+  Object.assign(globalThis,{document,localStorage:window.localStorage,matchMedia:()=>({matches:false}),confirm:()=>true});
+  window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};
+  window.HTMLDialogElement.prototype.close=function(){this.open=false;};
+  window.HTMLElement.prototype.scrollIntoView=function(){};
+  const realTimeout=globalThis.setTimeout;
+  globalThis.setTimeout=(fn,ms,...args)=>{const timer=realTimeout(fn,ms,...args);timer.unref?.();return timer;};
+  try{
+    globalThis.relaySession={tasks:[],save:async rows=>{globalThis.cloudSaved=structuredClone(rows);}};
+    await import('../public/app.js?cloud-test');
+    const click=selector=>{const element=document.querySelector(selector);assert.ok(element,selector);element.click();};
+    assert.equal(document.querySelectorAll('.day-column').length,7);
+    click('#new-task');assert.equal(document.querySelector('#task-dialog').open,true);
+    document.querySelector('#task-title').value='Synthetic QA task';
+    document.querySelector('#task-date').value='2026-11-16';
+    document.querySelector('#task-owner').value='code';
+    document.querySelector('#task-status').value='review';
+    document.querySelector('#task-result').value='Synthetic result ready for review.';
+    document.querySelector('#task-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(globalThis.cloudSaved[0].title,'Synthetic QA task');
+    assert.equal(localStorage.getItem('relay-planner-demo-v1'),null);
+    globalThis.relaySession.save=async()=>{throw Error('This schedule changed on another device.');};
+    click('#new-task');document.querySelector('#task-title').value='Must not save';
+    document.querySelector('#task-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.ok(!document.querySelector('#calendar').textContent.includes('Must not save'));
+    assert.ok(document.querySelector('#toast-message').textContent.includes('another device'));
+  }finally{globalThis.setTimeout=realTimeout;delete globalThis.relaySession;delete globalThis.cloudSaved;dom.window.close();}
+});

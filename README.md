@@ -8,7 +8,7 @@ Employees plan work, record what they actually did, and submit weekly timesheets
 
 Interactive browser-local calendar prototype: week/month views, phone agenda, task editing and rescheduling, unscheduled queue, human/agent assignments, simulated task review, undo and local saving. All sample content is synthetic.
 
-Time entry, timers, timesheet submission, manager approval, exports, authentication and shared persistence are **planned, not implemented**. The current review queue reviews task outcomes, not timesheets. Do not use this prototype for real employee records.
+Time entry, timers, timesheet submission, approvals and exports are **planned, not implemented**. The Netlify build adds personal account sign-in and cloud schedule storage; deployment verification is still pending. The original demo remains browser-local. The current review queue reviews task outcomes, not timesheets.
 
 ## Product workflow
 
@@ -46,3 +46,9 @@ Private hosted prototype: https://relay-planner-demo.beefymerit10.chatgpt.site
 Four automated tests cover calendar dates, rescheduling and DOM interactions. Layout checked at 1440 × 1000 and 390 × 844. Drag gestures and native date controls still need manual verification. The screenshots show the calendar prototype before time tracking is added.
 
 Keep customer records, employee timesheets, credentials and employer material out of this repository.
+
+## Hosted accounts (Netlify build)
+
+The account build now includes email signup/login/recovery, private per-account schedule storage, and conflict checks for multiple devices. `npm run build:netlify` builds it; `netlify.toml` supplies deployment settings. The original `npm run build` remains a synthetic local-storage demo. Netlify Identity must be enabled on the deployed project. See [deployment and verification](docs/netlify-deployment.md).
+
+This first hosted slice manages personal schedules, not shared team permissions. Production account-flow validation is pending. Time entries, timers, timesheets and external agent execution remain planned.

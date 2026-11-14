@@ -1,7 +1,7 @@
 import {dayKey,parseDay,addDays,weekStart,monthDays,sortTasks,reschedule} from './calendar.js';
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const projects={launch:'Product launch',engineering:'Engineering',content:'Content studio'};
+const projects=globalThis.relaySession?.projects??{launch:'Product launch',engineering:'Engineering',content:'Content studio'};
 const owners={human:'Human',code:'Code agent',research:'Research agent',writing:'Writing agent'};
 const statuses={planned:'Planned',working:'Working',review:'Needs review',done:'Done',attention:'Needs attention'};
 const storageKey='relay-planner-demo-v1';
@@ -32,10 +32,12 @@ function seed(){
   return rows.map(([title,project,owner,offset,time,status],i)=>({id:`demo-${i}`,title,project,owner,date:offset===null?'':day(offset),time,status,notes:'Work on the fictional Studio project. Attach a concise summary and state what was checked.',result:status==='review'?'Draft ready. Review the proposed changes and decide what should move forward.':'',link:'',history:[]}));
 }
 function load(){try{const saved=JSON.parse(localStorage.getItem(storageKey));if(Array.isArray(saved)&&saved.length<=1000&&saved.every(t=>t&&typeof t.id==='string'&&typeof t.title==='string'&&t.project in projects&&t.owner in owners&&t.status in statuses&&typeof t.date==='string'&&(!t.date||/^\d{4}-\d{2}-\d{2}$/.test(t.date))&&typeof t.time==='string'&&(!t.time||/^\d{2}:\d{2}$/.test(t.time))))return saved;}catch{}return seed();}
-let tasks=load();
+let tasks=globalThis.relaySession?.tasks??load();
+let cloudSaving=false;
 function persist(){try{localStorage.setItem(storageKey,JSON.stringify(tasks));return true;}catch{return false;}}
 function notify(message,allowUndo=true){$('toast-message').textContent=message;$('undo').hidden=!allowUndo;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,6500);}
-function change(message,update){undoState=structuredClone(tasks);tasks=update(tasks);const saved=persist();render();notify(saved?message:`${message} · Browser saving unavailable`);}
+function change(message,update){if(globalThis.relaySession)return saveCloud(message,update);undoState=structuredClone(tasks);tasks=update(tasks);const saved=persist();render();notify(saved?message:`${message} · Browser saving unavailable`);}
+async function saveCloud(message,update){if(cloudSaving)return;cloudSaving=true;const previous=structuredClone(tasks),next=update(structuredClone(tasks));$('workspace').inert=true;try{await globalThis.relaySession.save(next);undoState=previous;tasks=next;render();notify(message);}catch(err){notify(err.message||'Not saved. Refresh and try again.',false);}finally{cloudSaving=false;$('workspace').inert=false;}}
 function event(task,text){return {...task,history:[...(task.history||[]).slice(-9),{text,at:new Date().toISOString()}]};}
 function card(task,month=false){const agent=task.owner!=='human';return `<button draggable="true" class="${month?'month-task':'task-card'} ${esc(task.project)}" data-task="${esc(task.id)}" aria-label="${esc(task.title)}, ${esc(owners[task.owner])}, ${esc(statuses[task.status])}">${month?`${esc(task.time?timeLabel(task.time):'')} ${esc(task.title)}`:`<time class="task-time">${esc(timeLabel(task.time))}</time><span class="task-title">${esc(task.title)}</span><span class="task-owner"><span class="owner-mark ${agent?'agent-mark':''}">${agent?'⌘':'◉'}</span>${owners[task.owner]}</span><span class="task-status ${task.status}">${statuses[task.status]}</span>`}</button>`;}
 function dayTasks(date){return sortTasks(tasks.filter(t=>t.date===date));}
@@ -101,7 +103,7 @@ $('today').onclick=()=>{cursor=new Date(now);selected=dayKey(now);render();};
 function move(direction){if(view==='month'){cursor=new Date(cursor.getFullYear(),cursor.getMonth()+direction,1,12);}else cursor=addDays(cursor,7*direction);selected=dayKey(cursor);render();}
 $('previous').onclick=()=>move(-1);$('next').onclick=()=>move(1);
 $('queue-toggle').onclick=()=>{const open=$('queue').classList.toggle('open');$('queue-toggle').setAttribute('aria-expanded',String(open));if(open)$('queue').scrollIntoView({behavior:'smooth',block:'nearest'});};
-$('undo').onclick=()=>{if(!undoState)return;tasks=undoState;undoState=null;persist();render();notify('Change undone',false);};
+$('undo').onclick=()=>{if(!undoState)return;if(globalThis.relaySession){const previous=structuredClone(undoState);return change('Change undone',()=>previous);}tasks=undoState;undoState=null;persist();render();notify('Change undone',false);};
 $('reset').onclick=()=>{if(confirm('Reset this browser’s demo tasks? You can undo this change.'))change('Demo reset',()=>seed());};
 let dragged;
 document.addEventListener('dragstart',e=>{const t=e.target.closest('[data-task]');if(t){dragged=t.dataset.task;e.dataTransfer.setData('text/plain',dragged);e.dataTransfer.effectAllowed='move';}});
@@ -109,5 +111,5 @@ document.addEventListener('dragover',e=>{const target=e.target.closest('[data-dr
 document.addEventListener('dragleave',e=>e.target.closest('[data-drop]')?.classList.remove('drop-target'));
 document.addEventListener('drop',e=>{const target=e.target.closest('[data-drop]');if(target&&dragged){e.preventDefault();const id=dragged,date=target.dataset.drop;change('Task rescheduled',list=>reschedule(list,id,date).map(t=>t.id===id?event(t,`Rescheduled to ${date}`):t));}dragged=null;document.querySelectorAll('.drop-target').forEach(t=>t.classList.remove('drop-target'));});
 document.addEventListener('dragend',()=>{dragged=null;document.querySelectorAll('.drop-target').forEach(t=>t.classList.remove('drop-target'));});
-$('timezone').textContent=`${Intl.DateTimeFormat().resolvedOptions().timeZone} · Local time`;
+$('timezone').textContent=globalThis.relaySession?'Dates and times as entered · No automatic reminders':`${Intl.DateTimeFormat().resolvedOptions().timeZone} · Local time`;
 render();
