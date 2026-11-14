@@ -1,14 +1,14 @@
+import {taskTimeLabel} from './activity-time.js';
 import {dayKey,parseDay,addDays,weekStart,monthDays,sortTasks,reschedule} from './calendar.js';
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const projects=globalThis.relaySession?.projects??{launch:'Product launch',engineering:'Engineering',content:'Content studio'};
-const owners={human:'Human',code:'Code agent',research:'Research agent',writing:'Writing agent'};
+const owners={human:'Human',code:'Code agent',research:'Research agent',writing:'Writing agent',automation:'Automation'};
 const statuses={planned:'Planned',working:'Working',review:'Needs review',done:'Done',attention:'Needs attention'};
 const storageKey='relay-planner-demo-v1';
 const now=new Date();now.setHours(12,0,0,0);
 let cursor=new Date(now),selected=dayKey(now),view=matchMedia('(max-width:760px)').matches?'agenda':'week',page='calendar',editing=null,undoState=null,toastTimer;
 const dateLabel=(date,options)=>new Intl.DateTimeFormat('en-US',options).format(date);
-const timeLabel=value=>value?new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(new Date(`2000-01-01T${value}`)):'Anytime';
 function seed(){
   const start=weekStart(now),day=n=>dayKey(addDays(start,n));
   const rows=[
@@ -34,12 +34,13 @@ function seed(){
 function load(){try{const saved=JSON.parse(localStorage.getItem(storageKey));if(Array.isArray(saved)&&saved.length<=1000&&saved.every(t=>t&&typeof t.id==='string'&&typeof t.title==='string'&&t.project in projects&&t.owner in owners&&t.status in statuses&&typeof t.date==='string'&&(!t.date||/^\d{4}-\d{2}-\d{2}$/.test(t.date))&&typeof t.time==='string'&&(!t.time||/^\d{2}:\d{2}$/.test(t.time))))return saved;}catch{}return seed();}
 let tasks=globalThis.relaySession?.tasks??load();
 let cloudSaving=false;
+document.addEventListener('relay:schedule',e=>{if(!cloudSaving&&!$('task-dialog').open){tasks=e.detail;undoState=null;render();}});
 function persist(){try{localStorage.setItem(storageKey,JSON.stringify(tasks));return true;}catch{return false;}}
 function notify(message,allowUndo=true){$('toast-message').textContent=message;$('undo').hidden=!allowUndo;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,6500);}
 function change(message,update){if(globalThis.relaySession)return saveCloud(message,update);undoState=structuredClone(tasks);tasks=update(tasks);const saved=persist();render();notify(saved?message:`${message} · Browser saving unavailable`);}
 async function saveCloud(message,update){if(cloudSaving)return;cloudSaving=true;const previous=structuredClone(tasks),next=update(structuredClone(tasks));$('workspace').inert=true;try{await globalThis.relaySession.save(next);undoState=previous;tasks=next;render();notify(message);}catch(err){notify(err.message||'Not saved. Refresh and try again.',false);}finally{cloudSaving=false;$('workspace').inert=false;}}
 function event(task,text){return {...task,history:[...(task.history||[]).slice(-9),{text,at:new Date().toISOString()}]};}
-function card(task,month=false){const agent=task.owner!=='human';return `<button draggable="true" class="${month?'month-task':'task-card'} ${esc(task.project)}" data-task="${esc(task.id)}" aria-label="${esc(task.title)}, ${esc(owners[task.owner])}, ${esc(statuses[task.status])}">${month?`${esc(task.time?timeLabel(task.time):'')} ${esc(task.title)}`:`<time class="task-time">${esc(timeLabel(task.time))}</time><span class="task-title">${esc(task.title)}</span><span class="task-owner"><span class="owner-mark ${agent?'agent-mark':''}">${agent?'⌘':'◉'}</span>${owners[task.owner]}</span><span class="task-status ${task.status}">${statuses[task.status]}</span>`}</button>`;}
+function card(task,month=false){const agent=task.owner!=='human';return `<button draggable="${!task.activity}" class="${month?'month-task':'task-card'} ${esc(task.project)}" data-task="${esc(task.id)}" aria-label="${esc(task.title)}, ${esc(owners[task.owner])}, ${esc(statuses[task.status])}">${month?`${esc(task.time?taskTimeLabel(task):'')} ${esc(task.title)}`:`<time class="task-time">${esc(taskTimeLabel(task))}</time><span class="task-title">${esc(task.title)}</span><span class="task-owner"><span class="owner-mark ${agent?'agent-mark':''}">${agent?'⌘':'◉'}</span>${esc(task.activity?.agent||owners[task.owner])}</span><span class="task-status ${task.status}">${statuses[task.status]}</span>`}</button>`;}
 function dayTasks(date){return sortTasks(tasks.filter(t=>t.date===date));}
 function renderCalendar(){
   const start=weekStart(cursor),days=Array.from({length:7},(_,i)=>addDays(start,i));
@@ -52,7 +53,7 @@ function renderCalendar(){
     $('calendar').innerHTML=`<div class="month-grid">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day=>`<div class="month-label">${day}</div>`).join('')}${monthDays(cursor).map(date=>{const key=dayKey(date);return `<section class="month-cell${date.getMonth()!==cursor.getMonth()?' outside':''}${isToday(date)}" data-drop="${key}"><button class="day-number" data-day="${key}" aria-label="Open ${dateLabel(date,{dateStyle:'full'})}">${date.getDate()}</button>${dayTasks(key).map(t=>card(t,true)).join('')}</section>`;}).join('')}</div>`;
   }else{
     const list=dayTasks(selected);
-    $('calendar').innerHTML=`<div class="agenda-strip">${days.map(date=>`<button data-day="${dayKey(date)}" class="${dayKey(date)===selected?'selected':''}" aria-label="${dateLabel(date,{dateStyle:'full'})}">${dateLabel(date,{weekday:'short'})}<strong>${date.getDate()}</strong></button>`).join('')}</div><div class="agenda-list" data-drop="${selected}">${list.length?list.map(t=>`<div class="agenda-row"><time>${esc(timeLabel(t.time))}</time>${card(t)}</div>`).join(''):'<div class="empty"><strong>A little breathing room.</strong>No tasks planned for this day.</div>'}<button class="queue-add" data-add="${selected}">+ Plan a task for this day</button></div>`;
+    $('calendar').innerHTML=`<div class="agenda-strip">${days.map(date=>`<button data-day="${dayKey(date)}" class="${dayKey(date)===selected?'selected':''}" aria-label="${dateLabel(date,{dateStyle:'full'})}">${dateLabel(date,{weekday:'short'})}<strong>${date.getDate()}</strong></button>`).join('')}</div><div class="agenda-list" data-drop="${selected}">${list.length?list.map(t=>`<div class="agenda-row"><time>${esc(taskTimeLabel(t))}</time>${card(t)}</div>`).join(''):'<div class="empty"><strong>A little breathing room.</strong>No tasks planned for this day.</div>'}<button class="queue-add" data-add="${selected}">+ Plan a task for this day</button></div>`;
   }
 }
 function render(){
@@ -79,7 +80,7 @@ function openTask(id=null,date=selected){
   editing=id;const t=tasks.find(t=>t.id===id)||{title:'',project:'launch',owner:'human',date,time:'',status:'planned',notes:'',result:'',link:''};
   $('dialog-title').textContent=id?'Edit task':'Add a task';$('dialog-eyebrow').textContent='';$('task-options').open=false;
   for(const field of ['title','project','owner','date','time','status','notes','result','link'])$(`task-${field}`).value=t[field]||'';
-  syncQuickDates();$('delete-task').hidden=!id;
+  syncQuickDates();$('delete-task').hidden=!id||!!t.activity;$('save-task').hidden=!!t.activity;$('task-title').readOnly=!!t.activity;$('task-options').hidden=!!t.activity;document.querySelector('.quick-dates').hidden=!!t.activity;$('activity-receipt').hidden=!t.activity;$('activity-receipt').textContent=t.activity?`${t.activity.agent} · ${t.activity.kind}\nCompleted: ${t.activity.completedAt}\n${t.activity.startedAt?'Started: '+t.activity.startedAt+'\n':''}${t.result}`:'';
   $('task-history').innerHTML=(t.history||[]).map(e=>`<div>${esc(dateLabel(new Date(e.at),{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))} · ${esc(e.text)}</div>`).join('');
   $('task-dialog').showModal();$('task-title').focus();
 }
@@ -96,7 +97,7 @@ $('new-task').onclick=()=>openTask();$('add-idea').onclick=()=>openTask(null,'')
 for(const id of ['close-dialog','cancel-dialog'])$(id).onclick=()=>$('task-dialog').close();
 $('task-dialog').addEventListener('click',e=>{if(e.target===$('task-dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
 $('task-form').onsubmit=e=>{
-  e.preventDefault();const title=$('task-title').value.trim();if(!title){$('task-title').setCustomValidity('Enter a task title.');$('task-title').reportValidity();return;}
+  e.preventDefault();if(tasks.find(t=>t.id===editing)?.activity){$('task-dialog').close();return;}const title=$('task-title').value.trim();if(!title){$('task-title').setCustomValidity('Enter a task title.');$('task-title').reportValidity();return;}
   const link=$('task-link').value.trim();if(link&&!/^https?:\/\//i.test(link)){$('task-link').setCustomValidity('Use an http or https link.');$('task-link').reportValidity();return;}
   const old=tasks.find(t=>t.id===editing);const task={id:editing||crypto.randomUUID(),history:old?.history||[]};
   for(const field of ['title','project','owner','date','time','status','notes','result','link'])task[field]=$(`task-${field}`).value.trim();
@@ -111,7 +112,7 @@ $('queue-toggle').onclick=()=>{const open=$('queue').classList.toggle('open');$(
 $('undo').onclick=()=>{if(!undoState)return;if(globalThis.relaySession){const previous=structuredClone(undoState);return change('Change undone',()=>previous);}tasks=undoState;undoState=null;persist();render();notify('Change undone',false);};
 $('reset').onclick=()=>{if(confirm('Reset this browser’s demo tasks? You can undo this change.'))change('Demo reset',()=>seed());};
 let dragged;
-document.addEventListener('dragstart',e=>{const t=e.target.closest('[data-task]');if(t){dragged=t.dataset.task;e.dataTransfer.setData('text/plain',dragged);e.dataTransfer.effectAllowed='move';}});
+document.addEventListener('dragstart',e=>{const t=e.target.closest('[data-task]');if(t&&!tasks.find(row=>row.id===t.dataset.task)?.activity){dragged=t.dataset.task;e.dataTransfer.setData('text/plain',dragged);e.dataTransfer.effectAllowed='move';}});
 document.addEventListener('dragover',e=>{const target=e.target.closest('[data-drop]');if(target&&dragged){e.preventDefault();target.classList.add('drop-target');}});
 document.addEventListener('dragleave',e=>e.target.closest('[data-drop]')?.classList.remove('drop-target'));
 document.addEventListener('drop',e=>{const target=e.target.closest('[data-drop]');if(target&&dragged){e.preventDefault();const id=dragged,date=target.dataset.drop;change('Task rescheduled',list=>reschedule(list,id,date).map(t=>t.id===id?event(t,`Rescheduled to ${date}`):t));}dragged=null;document.querySelectorAll('.drop-target').forEach(t=>t.classList.remove('drop-target'));});

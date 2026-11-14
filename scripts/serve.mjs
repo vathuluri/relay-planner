@@ -1,6 +1,6 @@
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
-const files=new Set(['index.html','styles.css','app.js','calendar.js']);
+const files=new Set(['index.html','styles.css','app.js','calendar.js','activity-time.js']);
 const types={html:'text/html',css:'text/css',js:'text/javascript'};
 const port=Number(process.env.PORT||3210);
 const server=http.createServer(async(req,res)=>{

@@ -12,3 +12,5 @@ data/
 artifacts/
 playwright-report/
 test-results/
+relay-reporting.json
+.relay/

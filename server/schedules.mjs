@@ -1,5 +1,6 @@
+import {feedKey} from './activity.mjs';
 const projects=new Set(['launch','engineering','content']);
-const owners=new Set(['human','code','research','writing']);
+const owners=new Set(['human','code','research','writing','automation']);
 const statuses=new Set(['planned','working','review','done','attention']);
 export function validateTasks(input){
  if(!Array.isArray(input)||input.length>500)throw Error('Use at most 500 tasks.');
@@ -7,7 +8,7 @@ export function validateTasks(input){
   if(!t||typeof t!=='object'||!projects.has(t.project)||!owners.has(t.owner)||!statuses.has(t.status))throw Error('Invalid task.');
   const limits={id:100,title:120,date:10,time:5,notes:4000,result:4000,link:2000};const clean={project:t.project,owner:t.owner,status:t.status};
   for(const [k,max]of Object.entries(limits)){const v=t[k]??'';if(typeof v!=='string'||v.length>max)throw Error('Invalid '+k);clean[k]=v;}
-  if(!clean.id||!clean.title.trim())throw Error('A task needs a title and ID.');
+  if(clean.id.startsWith('activity-')||!clean.id||!clean.title.trim())throw Error('A task needs a title and ID.');
   if(clean.date&&(!/^\d{4}-\d{2}-\d{2}$/.test(clean.date)||!Number.isFinite(Date.parse(clean.date+'T12:00:00Z'))||new Date(clean.date+'T12:00:00Z').toISOString().slice(0,10)!==clean.date))throw Error('Invalid date.');
   if(clean.time&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(clean.time))throw Error('Invalid time.');
   if(clean.link&&!['https:','http:'].includes(new URL(clean.link).protocol))throw Error('Invalid link.');
@@ -26,7 +27,7 @@ export function createScheduleHandler({getUser,getStore}){return async req=>{
  const key='users/'+encodeURIComponent(user.id)+'/schedule';
  try{
   const store=getStore();
-  if(req.method==='GET'){const found=await store.getWithMetadata(key,{type:'json',consistency:'strong'});return reply({tasks:found?.data?.tasks??[],version:found?.etag??null,accountId:user.id});}
+  if(req.method==='GET'){const found=await store.getWithMetadata(key,{type:'json',consistency:'strong'});const feed=await store.getWithMetadata(feedKey(user.id),{type:'json',consistency:'strong'});return reply({tasks:[...(found?.data?.tasks??[]),...(feed?.data?.records??[]).map(r=>r.task)],version:found?.etag??null,accountId:user.id,feedVersion:feed?.etag??null});}
   if(req.headers.get('origin')!==new URL(req.url).origin)return reply({error:'Request origin refused.'},403);
   if(!req.headers.get('content-type')?.startsWith('application/json'))return reply({error:'JSON required.'},415);
   if(Number(req.headers.get('content-length'))>1_000_000)return reply({error:'Schedule too large.'},413);
