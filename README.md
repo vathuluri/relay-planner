@@ -52,3 +52,5 @@ Keep customer records, employee timesheets, credentials and employer material ou
 The account build now includes email signup/login/recovery, private per-account schedule storage, and conflict checks for multiple devices. `npm run build:netlify` builds it; `netlify.toml` supplies deployment settings. The original `npm run build` remains a synthetic local-storage demo. Netlify Identity must be enabled on the deployed project. See [deployment and verification](docs/netlify-deployment.md).
 
 This first hosted slice manages personal schedules, not shared team permissions. Production account-flow validation is pending. Time entries, timers, timesheets and external agent execution remain planned.
+
+Live account app: https://relay-planner.netlify.app/ — Netlify Identity enabled with required email confirmation. Ten automated checks pass and anonymous schedule requests are rejected. Live signed-in save/refresh verification is pending. This is the account app; the earlier private Sites address remains the synthetic demo.

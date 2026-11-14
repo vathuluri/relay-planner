@@ -15,3 +15,14 @@ Current scope: per-account tasks, dates, times, owner labels and task status, sa
 Local checks: npm test includes session isolation, unauthenticated rejection, stale/concurrent-write conflicts, origin checks, invalid dates/times, failure handling and cloud-save rollback. These use fake sessions/storage. Production signup and multi-account isolation must be checked separately before inviting others.
 
 If Netlify Identity or Blobs is unavailable, access and saving fail closed. The app never silently falls back to browser-only saving. Refresh schedule loads the latest server copy. Submitted edits have no automatic retry; failed saves leave the current displayed schedule unchanged.
+
+## Live deployment — November 14, 2026
+
+- App: https://relay-planner.netlify.app/
+- Netlify project: https://app.netlify.com/projects/relay-planner/
+- Source branch: main, account implementation 895a2af.
+- Identity enabled; registration Open, email confirmation Required (verified in Netlify).
+- Public sign-in page loaded successfully; anonymous schedule GET returns HTTP401 with private/no-store caching.
+- Ten automated tests pass. Live signed-in save/refresh and email flows are still awaiting owner verification; do not claim these production checks passed yet.
+
+The Netlify project is separate from the personal blog and the private Sites demo. There are no paid add-ons or external agent runners configured by this setup.
