@@ -12,3 +12,8 @@ export function validateKeys(k){
  const w=k.wrappedPrivate;if(!exact(w,['iv','ciphertext'])||!b64(w.iv,16,16)||!b64(w.ciphertext,24,8000))throw Error('Encrypted recovery material required.');
  return {format:FORMAT,keyId:k.keyId,publicKey:p,wrappedPrivate:{iv:w.iv,ciphertext:w.ciphertext}};
 }
+
+export function validatePasskey(p){
+ if(!exact(p,['format','credentialId','salt','iv','ciphertext'])||p.format!=='relay-passkey-v1'||!b64(p.credentialId,4,2048)||!b64(p.salt,44,44)||!b64(p.iv,16,16)||!b64(p.ciphertext,108,108))throw Error('Invalid passkey envelope.');
+ return {format:p.format,credentialId:p.credentialId,salt:p.salt,iv:p.iv,ciphertext:p.ciphertext};
+}

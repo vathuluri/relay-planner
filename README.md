@@ -58,3 +58,7 @@ Live account app: https://relay-planner.netlify.app/ — Netlify Identity enable
 ## Encrypted account storage
 
 The Netlify account build encrypts schedules and agent receipts on the originating device before upload. Existing accounts must complete a recovery-file backup and explicit browser migration. Another device requires the private recovery key; email password recovery cannot decrypt data. Agent reporting uses a public encryption key and a separate append-only token. See [privacy and migration boundaries](docs/privacy-requirements.md) and [reporting setup](docs/activity-reporting.md). The public synthetic demo remains browser-local. Live migration status must be verified per account.
+
+## Passkey unlock
+
+The hosted build supports passkey-based schedule unlock with WebAuthn PRF-compatible browsers/password managers. Email/password sign-in remains in place. Choose **Set up passkey** during encryption setup, or **Account → Passkey settings** to add one using an existing recovery file. Save an independent recovery backup when possible. See [setup, compatibility and validation limits](docs/passkeys.md). No real provider compatibility is claimed until tested by the owner.

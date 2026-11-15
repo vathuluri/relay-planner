@@ -40,3 +40,20 @@ test('cross-origin, malformed ciphertext, private key upload and key replacement
  await f.handler(req('PUT',migration()));const saved=await(await f.handler(req())).json();assert.equal((await f.handler(req('PUT',{version:saved.version,keys:bob.record,envelope}))).status,409);
 });
 test('identity and storage outages fail closed',async()=>{for(const h of [createScheduleHandler({getUser:async()=>{throw Error();},getStore:()=>{throw Error();}}),createScheduleHandler({getUser:async()=>({id:'alice'}),getStore:()=>{throw Error();}})])assert.ok([401,503].includes((await h(req())).status));});
+
+const passkey={format:'relay-passkey-v1',credentialId:'AQIDBA==',salt:Buffer.alloc(32,1).toString('base64'),iv:Buffer.alloc(12,2).toString('base64'),ciphertext:Buffer.alloc(80,3).toString('base64')};
+test('passkey migration preserves encrypted unlock on later saves and refuses plaintext or replacement',async()=>{
+ const f=fixture();assert.equal((await f.handler(req('PUT',migration({passkey:{...passkey,recoveryKey:'secret'}})))).status,400);
+ assert.equal((await f.handler(req('PUT',migration({passkey})))).status,200);let saved=await(await f.handler(req())).json();assert.deepEqual(saved.vault.passkey,passkey);
+ assert.equal((await f.handler(req('PUT',{version:saved.version,keys:alice.record,envelope}))).status,200);saved=await(await f.handler(req())).json();assert.deepEqual(saved.vault.passkey,passkey);
+ assert.equal((await f.handler(req('POST',{action:'add-passkey',version:saved.version,passkey}))).status,409);
+});
+test('existing vault enrollment requires account, origin and current version and leaves encrypted tasks intact',async()=>{
+ const f=fixture();await f.handler(req('PUT',migration()));const saved=await(await f.handler(req())).json();
+ const body={action:'add-passkey',version:saved.version,passkey};
+ assert.equal((await f.handler(req('POST',{...body,version:'stale'}))).status,409);
+ assert.equal((await f.handler(req('POST',body,'https://other.example'))).status,403);
+ assert.equal((await f.handler(req('POST',{...body,accountId:'bob'}))).status,409);
+ assert.equal((await f.handler(req('POST',{...body,passkey:{...passkey,secret:'plaintext'}}))).status,400);
+ assert.equal((await f.handler(req('POST',body))).status,200);const updated=await(await f.handler(req())).json();assert.notEqual(updated.version,saved.version);assert.deepEqual(updated.vault.envelope,saved.vault.envelope);assert.deepEqual(updated.vault.passkey,passkey);
+});

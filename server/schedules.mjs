@@ -1,5 +1,5 @@
 import {feedKey,encryptedFeedKey} from './activity.mjs';
-import {FORMAT,validateEnvelope,validateKeys} from './envelopes.mjs';
+import {FORMAT,validateEnvelope,validateKeys,validatePasskey} from './envelopes.mjs';
 const projects=new Set(['launch','engineering','content']);
 const owners=new Set(['human','code','research','writing','automation']);
 const statuses=new Set(['planned','working','review','done','attention']);
@@ -41,6 +41,12 @@ export function createScheduleHandler({getUser,getStore}){return async req=>{
   const found=await store.getWithMetadata(key,{type:'json',consistency:'strong'});
   // Cleanup follows browser readback and verification of the committed migration.
   if(req.method==='POST'){
+   if(body.action==='add-passkey'){
+    if(found?.data?.format!==FORMAT||found.etag!==body.version||found.data.passkey)return reply({error:'Schedule changed or passkey already exists. Refresh first.'},409);
+    let passkey;try{passkey=validatePasskey(body.passkey);}catch{return reply({error:'Encrypted passkey envelope required.'},400);}
+    const result=await store.setJSON(key,{...found.data,passkey},{onlyIfMatch:body.version});
+    return result.modified?reply({version:result.etag}):reply({error:'Schedule changed. Refresh first.'},409);
+   }
    if(body.action!=='confirm-migration'||found?.data?.format!==FORMAT||found.etag!==body.version)return reply({error:'Migration changed. Refresh first.'},409);
    const legacy=await store.getWithMetadata(feedKey(user.id),{type:'json',consistency:'strong'});
    if(legacy){if(legacy.etag!==found.data.migratedFeedVersion)return reply({error:'Legacy activity changed; cleanup refused.'},409);await store.delete(feedKey(user.id));}
@@ -55,7 +61,9 @@ export function createScheduleHandler({getUser,getStore}){return async req=>{
    if(!body.migrate||(legacy?.etag??null)!==body.feedVersion)return reply({error:'Migration source changed. Refresh first.'},409);
    migratedFeedVersion=legacy?.etag??null;
   }
-  const vault={format:FORMAT,keys,envelope,migratedFeedVersion};
+  let passkey=found?.data?.passkey;
+  if(body.passkey!==undefined){if(found?.data?.format===FORMAT)return reply({error:'Use passkey setup without replacing the schedule.'},400);try{passkey=validatePasskey(body.passkey);}catch{return reply({error:'Invalid passkey envelope.'},400);}}
+  const vault={format:FORMAT,keys,envelope,migratedFeedVersion,...(passkey?{passkey}:{})};
   const result=await store.setJSON(key,vault,body.version===null?{onlyIfNew:true}:{onlyIfMatch:body.version});
   if(!result.modified)return reply({error:'Schedule changed on another device. Refresh first.'},409);
   return reply({version:result.etag});
