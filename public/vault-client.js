@@ -1,4 +1,4 @@
-import {beginPasskey,createPasskey,unlockWithPasskey,passkeysAvailable} from './passkeys.js';
+import {beginPasskey,createPasskey,useSavedPasskey,unlockWithPasskey,passkeysAvailable} from './passkeys.js';
 import {createVaultKeys,unlockVault,seal,open,keyId} from './crypto.js';
 import {authenticatedFetch} from './auth-fetch.js';
 const $=id=>document.getElementById(id);
@@ -20,12 +20,14 @@ export async function decodeSchedule(data,privateKey){
 }
 export async function prepareVault(data,{forceUnlock=false}={}){
  const panel=$('vault-gate');$('account-form').hidden=true;document.querySelector('.account-actions').hidden=true;panel.hidden=false;
- const existing=!!data.vault;let generated=null,privateKey=null,committedVersion=null,passkey=data.vault?.passkey??null,registration=null,processing=false;const lock=value=>{processing=value;for(const id of ['vault-passkey','vault-generate','vault-import','vault-submit'])$(id).disabled=value;};$('account-message').textContent='Signed in. Complete the private encryption step below.';$('vault-submit').disabled=!existing;$('vault-backed-up').onchange=()=>{$('vault-submit').disabled=!generated||(!passkey&&!$('vault-backed-up').checked);};
+ const existing=!!data.vault;let generated=null,privateKey=null,committedVersion=null,passkey=data.vault?.passkey??null,registration=null,processing=false;const lock=value=>{processing=value;for(const id of ['vault-passkey','vault-use-passkey','vault-generate','vault-import','vault-submit'])$(id).disabled=value;};$('account-message').textContent='Signed in. Complete the private encryption step below.';$('vault-submit').disabled=!existing;$('vault-backed-up').onchange=()=>{$('vault-submit').disabled=!generated||(!passkey&&!$('vault-backed-up').checked);};
  $('vault-title').textContent=existing?'Unlock your schedule':'Encrypt your schedule';
  $('vault-setup').hidden=existing;$('vault-unlock').hidden=!existing;
- $('vault-passkey').hidden=!passkeysAvailable();$('vault-passkey').textContent=existing?(passkey?'Unlock with passkey':'Add passkey using recovery key'):'Set up passkey';
+ $('vault-use-passkey').hidden=existing||!passkeysAvailable();$('vault-passkey').hidden=!passkeysAvailable();$('vault-passkey').textContent=existing?(passkey?'Unlock with passkey':'Add passkey using recovery key'):'Set up passkey';
  if(existing&&!forceUnlock){try{const cached=await deviceKey(data.accountId);if(cached?.keyId===data.vault.keys.keyId){await decodeSchedule(data,cached.privateKey);await confirmMigration(data);panel.hidden=true;return {privateKey:cached.privateKey,keys:data.vault.keys};}}catch{} }
  return await new Promise(resolve=>{
+  $('vault-use-passkey').onclick=async()=>{if(processing||committedVersion)return;if(passkey){$('vault-message').textContent='Passkey already verified. Click Continue.';return;}lock(true);$('vault-message').textContent='Choose an existing Relay passkey in your password manager and approve unlock. No new passkey will be created.';try{generated??=await createVaultKeys(data.accountId);passkey=await useSavedPasskey(generated.record,generated.recovery,data.accountId);$('vault-message').textContent='Saved passkey verified. Click Continue to encrypt your schedule. Use this same synced passkey on your phone.';$('vault-passkey').textContent='Passkey verified';}catch(err){$('vault-message').textContent=err.name==='NotAllowedError'?'No saved passkey was selected, or the request timed out. Try Use a saved passkey again; do not create another.':err.message;}finally{lock(false);$('vault-submit').disabled=!passkey&&!$('vault-backed-up').checked;}};
+
   $('vault-passkey').onclick=async()=>{const b=$('vault-passkey');if(processing||committedVersion)return;lock(true);try{
    if(existing&&passkey){privateKey=await unlockWithPasskey(passkey,data.vault.keys,data.accountId);await decodeSchedule(data,privateKey);await confirmMigration(data);if($('vault-remember').checked)await deviceKey(data.accountId,{keyId:data.vault.keys.keyId,privateKey});panel.hidden=true;resolve({privateKey,keys:data.vault.keys});return;}
    if(!registration&&!passkey){if(existing)await unlockVault(data.vault.keys,$('vault-secret').value,data.accountId);registration=await beginPasskey(data.accountId);b.textContent='Verify passkey';$('vault-message').textContent='Passkey saved. Click Verify passkey and approve the next prompt in the same password manager. Your schedule is not migrated yet.';return;}
@@ -57,7 +59,7 @@ export async function prepareVault(data,{forceUnlock=false}={}){
     }
     if($('vault-remember').checked)await deviceKey(data.accountId,{keyId:keys.keyId,privateKey});
     panel.hidden=true;resolve({privateKey,keys});
-   }catch(err){if(err.status===401){$('vault-message').textContent='Your session needs renewal. Sign in above, then Continue. Your generated recovery key is preserved in this page.';document.dispatchEvent(new CustomEvent('relay:reauth',{detail:{accountId:data.accountId}}));}else{$('vault-message').textContent=existing?'Could not unlock. Check your recovery key.':err.message;}}finally{lock(false);if(committedVersion){$('vault-passkey').disabled=true;$('vault-import').disabled=true;$('vault-generate').disabled=true;}b.textContent='Continue';}
+   }catch(err){if(err.status===401){$('vault-message').textContent='Your session needs renewal. Sign in above, then Continue. Your generated recovery key is preserved in this page.';document.dispatchEvent(new CustomEvent('relay:reauth',{detail:{accountId:data.accountId}}));}else{$('vault-message').textContent=existing?'Could not unlock. Check your recovery key.':err.message;}}finally{lock(false);if(committedVersion){$('vault-passkey').disabled=true;$('vault-use-passkey').disabled=true;$('vault-import').disabled=true;$('vault-generate').disabled=true;}b.textContent='Continue';}
   };
  });
 }

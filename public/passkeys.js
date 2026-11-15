@@ -7,7 +7,10 @@ export const passkeysAvailable=()=>!!globalThis.PublicKeyCredential&&!!globalThi
 async function prfKey(credential,salt){
  const assertion=await navigator.credentials.get({publicKey:{timeout:60000,challenge:random(32),allowCredentials:[{type:'public-key',id:credential}],userVerification:'required',extensions:{prf:{eval:{first:salt}}}}});
  if(!assertion||b64(assertion.rawId)!==b64(credential))throw Error('The selected passkey does not match.');
- const output=assertion.getClientExtensionResults()?.prf?.results?.first;
+ return keyFromAssertion(assertion);
+}
+async function keyFromAssertion(assertion){
+ const output=assertion?.getClientExtensionResults()?.prf?.results?.first;
  if(!output||output.byteLength!==32)throw Error('This browser or password manager cannot unlock encrypted data with passkeys. Use a recovery file instead.');
  try{return await crypto.subtle.importKey('raw',output,'AES-GCM',false,['encrypt','decrypt']);}finally{new Uint8Array(output).fill(0);}
 }
@@ -20,7 +23,20 @@ export async function beginPasskey(accountId){
 }
 export async function createPasskey(keys,recovery,accountId,pending){
  const registration=pending??await beginPasskey(accountId);
- const key=await prfKey(unb64(registration.credentialId),unb64(registration.salt)),iv=random(12);
+ const key=await prfKey(unb64(registration.credentialId),unb64(registration.salt));
+ return wrapRecovery(keys,recovery,accountId,registration,key);
+}
+export async function useSavedPasskey(keys,recovery,accountId){
+ if(!passkeysAvailable())throw Error('Use a supported browser or your recovery file.');
+ const salt=random(32);
+ const assertion=await navigator.credentials.get({publicKey:{timeout:60000,challenge:random(32),userVerification:'required',extensions:{prf:{eval:{first:salt}}}}});
+ const expected=await crypto.subtle.digest('SHA-256',enc.encode(accountId));
+ if(!assertion?.response?.userHandle||b64(assertion.response.userHandle)!==b64(expected))throw Error('Choose a Relay passkey saved for this account. Your schedule is unchanged.');
+ const key=await keyFromAssertion(assertion);
+ return wrapRecovery(keys,recovery,accountId,{credentialId:b64(assertion.rawId),salt:b64(salt)},key);
+}
+async function wrapRecovery(keys,recovery,accountId,registration,key){
+ const iv=random(12);
  const ciphertext=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:aad(accountId,keys.keyId)},key,enc.encode(recovery));
  const record={format:'relay-passkey-v1',credentialId:registration.credentialId,salt:registration.salt,iv:b64(iv),ciphertext:b64(ciphertext)};
  // Verify the encrypted package locally without opening another authenticator prompt.

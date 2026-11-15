@@ -1,5 +1,7 @@
 # Passkey unlock
 
+Already created a Relay passkey but setup did not finish? Choose **Use a saved passkey**, select any existing Relay passkey for this account in your manager, approve it, then Continue. This creates no additional credential. Relay stores the selected credential ID with the encrypted unlock package; later unlocks target that exact credential. Do not delete duplicates until the enrolled passkey is verified on both devices.
+
 The hosted account build offers **Set up passkey** during encryption setup. Save it in your browser's compatible password manager, click **Verify passkey** and approve its prompt, then choose Continue. A recovery-file download remains available as an independent backup, but is not required after passkey verification.
 
 This is encrypted-schedule unlock, not passwordless account sign-in. Netlify Identity email/password authentication is unchanged. On another device, sign in to the same account and choose Unlock with passkey. Your password manager must make the same passkey available there and support WebAuthn PRF in that browser. Generic passkey support alone is insufficient. Relay reports unsupported PRF or cancellation without migrating the schedule. A provider might still save an unused credential when its PRF capability check fails.
