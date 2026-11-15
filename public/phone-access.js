@@ -29,4 +29,3 @@ export function wirePhoneAccess({readSchedule,accountId}){
  $('phone-access-unlock').onclick=()=>retrieve(false);
  $('phone-access-recovery-unlock').onclick=()=>retrieve(true);
 }
-

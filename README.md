@@ -66,3 +66,7 @@ The hosted build supports passkey-based schedule unlock with WebAuthn PRF-compat
 ## Phone-compatible unlock
 
 The primary account unlock uses a random vault password saved in your password manager, with no mobile WebAuthn PRF requirement. Existing passkey accounts can retrieve that same secret from the working PC through Account → Set up phone access. Existing encrypted data stays intact. See [phone setup and validation boundaries](docs/phone-access.md).
+
+## Approve another device
+
+A locked device can request access from an unlocked device on the same account. Compare the full code and approve explicitly; the temporary exchange transfers only encrypted key material. An existing account may need one initial working-passkey verification to enable approvals. Recovery and vault-password unlock remain available. See [protocol, limitations and validation status](docs/device-approval.md). Real phone approval must be verified by the owner; no independent security audit is claimed.

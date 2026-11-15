@@ -57,3 +57,11 @@ test('existing vault enrollment requires account, origin and current version and
  assert.equal((await f.handler(req('POST',{...body,passkey:{...passkey,secret:'plaintext'}}))).status,400);
  assert.equal((await f.handler(req('POST',body))).status,200);const updated=await(await f.handler(req())).json();assert.notEqual(updated.version,saved.version);assert.deepEqual(updated.vault.envelope,saved.vault.envelope);assert.deepEqual(updated.vault.passkey,passkey);
 });
+
+test('device-transfer bootstrap stores ciphertext once and survives ordinary schedule saves',async()=>{
+ const f=fixture();await f.handler(req('PUT',migration()));let saved=await(await f.handler(req())).json();const transferEnvelope=await seal({recovery:alice.recovery},alice.record.publicKey,'alice','device-transfer:'+alice.record.keyId);
+ const body={action:'add-device-transfer',version:saved.version,transferEnvelope};
+ assert.equal((await f.handler(req('POST',{...body,version:'stale'}))).status,409);assert.equal((await f.handler(req('POST',body,'https://other.example'))).status,403);assert.equal((await f.handler(req('POST',{...body,accountId:'bob'}))).status,409);assert.equal((await f.handler(req('POST',{...body,transferEnvelope:{...transferEnvelope,recovery:alice.recovery}}))).status,400);
+ assert.equal((await f.handler(req('POST',body))).status,200);saved=await(await f.handler(req())).json();assert.ok(!JSON.stringify(saved.vault).includes(alice.recovery));assert.equal((await open(saved.vault.transferEnvelope,alice.privateKey,'alice','device-transfer:'+alice.record.keyId)).recovery,alice.recovery);
+ assert.equal((await f.handler(req('POST',{...body,version:saved.version}))).status,409);assert.equal((await f.handler(req('PUT',{keys:alice.record,envelope,version:saved.version}))).status,200);const updated=await(await f.handler(req())).json();assert.deepEqual(updated.vault.transferEnvelope,transferEnvelope);
+});
