@@ -12,7 +12,7 @@ test('PRF passkey unlocks encrypted records without storing its secret; wrong ac
  for(const [k,value] of Object.entries({navigator:{credentials},PublicKeyCredential:class{},isSecureContext:true}))Object.defineProperty(globalThis,k,{configurable:true,value});
  try{
   const vault=await createVaultKeys('synthetic-account');const record=await createPasskey(vault.record,vault.recovery,'synthetic-account');
-  assert.equal(calls.length,3);assert.equal(calls[0].publicKey.authenticatorSelection.residentKey,'required');assert.equal(calls[1].publicKey.userVerification,'required');
+  assert.equal(calls.length,2);assert.equal(calls[0].publicKey.authenticatorSelection.residentKey,'required');assert.equal(calls[1].publicKey.userVerification,'required');
   assert.ok(!JSON.stringify(record).includes(vault.recovery));assert.deepEqual(Object.keys(record).sort(),['ciphertext','credentialId','format','iv','salt']);
   const envelope=await seal({title:'Synthetic private task'},vault.record.publicKey,'synthetic-account','schedule');
   const key=await unlockWithPasskey(record,vault.record,'synthetic-account');assert.equal(key.extractable,false);assert.equal((await open(envelope,key,'synthetic-account','schedule')).title,'Synthetic private task');
