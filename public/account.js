@@ -11,7 +11,9 @@ document.addEventListener('relay:reauth',async e=>{reauthAccountId=e.detail.acco
 $('account-switch').onclick=()=>{mode=mode==='signup'?'login':'signup';controls();say('');};
 $('account-recover').onclick=async()=>{try{if(!$('account-email').reportValidity())return;await requestPasswordRecovery($('account-email').value.trim());say('If that account exists, check your email for a reset link.');}catch{say('Could not send a reset link. Please try again.');}};
 $('account-form').onsubmit=async e=>{e.preventDefault();if(busy)return;busy=true;$('account-submit').disabled=true;try{const email=$('account-email').value.trim(),password=$('account-password').value;if(mode==='reset'){await updateUser({password});location.replace('/');return;}if(mode==='signup'){await signup(email,password);say('Check your email to confirm your account, then sign in.');$('account-password').value='';}else{await login(email,password);$('account-password').value='';if(reauthAccountId){const renewed=await getUser();if(renewed?.id!==reauthAccountId)throw Error('Sign in with the same account used for this migration.');reauthAccountId=null;$('account-form').hidden=true;say('Session renewed. Click Continue below; your recovery key is preserved.');return;}await enter();}}catch(err){say(err.message||'Could not sign in.');}finally{busy=false;$('account-submit').disabled=false;}};
-$('account-logout').onclick=async()=>{try{await logout();location.replace('/');}catch{$('sync-state').textContent='Could not sign out. Try again.';}};
+async function signOut(event){const button=event.currentTarget;button.disabled=true;try{await logout();location.replace('/');}catch{const message='Could not sign out. Try again.';$('sync-state').textContent=message;$('account-message').textContent=message;button.disabled=false;}}
+$('account-logout').onclick=signOut;
+$('vault-logout').onclick=signOut;
 $('account-refresh').onclick=()=>location.reload();
 $('manage-passkey').onclick=()=>{sessionStorage.setItem('relay-passkey-settings','1');location.reload();};
 $('forget-device').onclick=async()=>{await forgetDevice(globalThis.relayAccountId);location.reload();};
