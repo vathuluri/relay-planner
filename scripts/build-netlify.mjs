@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {build} from 'esbuild';
 import {readFile,writeFile} from 'node:fs/promises';
 await import('./build.mjs');
@@ -7,7 +8,13 @@ html=html.replace(/<link rel="preconnect"[^>]+>/g,'').replace(/<link href="https
 html=html.replace('<body>','<body>'+gate+'<div id="workspace" hidden>');
 html=html.replace('<script type="module" src="app.js"></script>','</div><script type="module" src="account.js"></script>');
 html=html.replaceAll('Studio workspace','Your workspace').replaceAll('Product launch','Work').replaceAll('Engineering','Projects').replaceAll('Content studio','Personal').replaceAll('Demo workspace','Your workspace').replaceAll('Interactive demo','Personal schedule').replaceAll('Synthetic demo · Saved in this browser · Agents are simulated','Private saved schedule · Agents are labels; no agent is started').replaceAll('Demo only. Changes stay in this browser; no agent is started.','Changes save to your account. No agent is started.');
-await writeFile('dist/index.html',html);
-await writeFile('dist/_headers',"/*\n  X-Content-Type-Options: nosniff\n  X-Frame-Options: DENY\n  Referrer-Policy: no-referrer\n  Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'\n/\n  Cache-Control: no-store\n/index.html\n  Cache-Control: no-store\n");
+
+await writeFile('dist/_headers',"/*\n  X-Content-Type-Options: nosniff\n  X-Frame-Options: DENY\n  Referrer-Policy: no-referrer\n  Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'\n/\n  Cache-Control: no-store\n/index.html\n  Cache-Control: no-store\n/account.js\n  Cache-Control: no-store\n");
 await build({entryPoints:['public/account.js'],bundle:true,format:'esm',outfile:'dist/account.js',minify:true});
+const bundle=await readFile('dist/account.js');
+const fingerprint=createHash('sha256').update(bundle).digest('hex').slice(0,16);
+const entry='account-'+fingerprint+'.js';
+await writeFile('dist/'+entry,bundle);
+html=html.replace('src="account.js"','src="'+entry+'"');
+await writeFile('dist/index.html',html);
 console.log('Built Netlify account app (Identity must be enabled on the deployed project).');

@@ -22,3 +22,8 @@
   for = "/"
   [headers.values]
     Cache-Control = "no-store"
+
+[[headers]]
+  for = "/account.js"
+  [headers.values]
+    Cache-Control = "no-store"
