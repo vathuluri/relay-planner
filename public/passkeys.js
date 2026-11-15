@@ -11,7 +11,7 @@ async function prfKey(credential,salt){
 }
 async function keyFromAssertion(assertion){
  const output=assertion?.getClientExtensionResults()?.prf?.results?.first;
- if(!output||output.byteLength!==32)throw Error('This browser or password manager cannot unlock encrypted data with passkeys. Use a recovery file instead.');
+ if(!output||output.byteLength!==32)throw Error('This browser or password manager does not return the passkey encryption secret. Use your vault password here. On your working PC, choose Account → Set up phone access to retrieve it.');
  try{return await crypto.subtle.importKey('raw',output,'AES-GCM',false,['encrypt','decrypt']);}finally{new Uint8Array(output).fill(0);}
 }
 export async function beginPasskey(accountId){
@@ -49,6 +49,16 @@ export async function unlockWithPasskey(record,keys,accountId){
  return unwrap(record,keys,accountId,key);
 }
 async function unwrap(record,keys,accountId,key){
+ const result=await unwrapRecovery(record,keys,accountId,key);
+ return result.privateKey;
+}
+// Called only by the owner's explicit phone-access action. Never upload this value.
+export async function recoverVaultPassword(record,keys,accountId){
+ if(!passkeysAvailable())throw Error('Use the browser where your passkey currently works.');
+ const key=await prfKey(unb64(record.credentialId),unb64(record.salt));
+ return unwrapRecovery(record,keys,accountId,key);
+}
+async function unwrapRecovery(record,keys,accountId,key){
  const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(record.iv),additionalData:aad(accountId,keys.keyId)},key,unb64(record.ciphertext));
- try{return await unlockVault(keys,dec.decode(bytes),accountId);}finally{new Uint8Array(bytes).fill(0);}
+ try{const recovery=dec.decode(bytes);return {privateKey:await unlockVault(keys,recovery,accountId),recovery};}finally{new Uint8Array(bytes).fill(0);}
 }

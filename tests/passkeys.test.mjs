@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createVaultKeys,seal,open} from '../public/crypto.js';
-import {createPasskey,useSavedPasskey,unlockWithPasskey} from '../public/passkeys.js';
+import {createVaultKeys,unlockVault,seal,open} from '../public/crypto.js';
+import {createPasskey,useSavedPasskey,unlockWithPasskey,recoverVaultPassword} from '../public/passkeys.js';
 
 test('PRF passkey unlocks encrypted records without storing its secret; wrong account, key or credential fails',async()=>{
  const descriptors=Object.fromEntries(['navigator','PublicKeyCredential','isSecureContext'].map(k=>[k,Object.getOwnPropertyDescriptor(globalThis,k)]));
@@ -16,12 +16,14 @@ test('PRF passkey unlocks encrypted records without storing its secret; wrong ac
   const before=calls.length;const selected=await useSavedPasskey(vault.record,vault.recovery,'synthetic-account');assert.equal(calls.length,before+1);assert.equal(calls.at(-1).publicKey.allowCredentials,undefined);assert.equal(selected.credentialId,record.credentialId);const selectedKey=await unlockWithPasskey(selected,vault.record,'synthetic-account');assert.equal(selectedKey.extractable,false);userHandle=null;await assert.rejects(useSavedPasskey(vault.record,vault.recovery,'synthetic-account'),/for this account/);userHandle=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('synthetic-account'));
   assert.ok(!JSON.stringify(record).includes(vault.recovery));assert.deepEqual(Object.keys(record).sort(),['ciphertext','credentialId','format','iv','salt']);
   const envelope=await seal({title:'Synthetic private task'},vault.record.publicKey,'synthetic-account','schedule');
+  const exported=await recoverVaultPassword(record,vault.record,'synthetic-account');assert.equal(exported.recovery,vault.recovery);assert.equal(exported.privateKey.extractable,false);
+  const passwordKey=await unlockVault(vault.record,exported.recovery,'synthetic-account');assert.equal((await open(envelope,passwordKey,'synthetic-account','schedule')).title,'Synthetic private task');
   const key=await unlockWithPasskey(record,vault.record,'synthetic-account');assert.equal(key.extractable,false);assert.equal((await open(envelope,key,'synthetic-account','schedule')).title,'Synthetic private task');
   await assert.rejects(unlockWithPasskey(record,vault.record,'other-account'));
   await assert.rejects(unlockWithPasskey(record,{...vault.record,keyId:'other-key'},'synthetic-account'));
   wrong=true;await assert.rejects(unlockWithPasskey(record,vault.record,'synthetic-account'),/does not match/);wrong=false;
   prfSecret='other-authenticator';await assert.rejects(unlockWithPasskey(record,vault.record,'synthetic-account'));
-  supported=false;await assert.rejects(createPasskey(vault.record,vault.recovery,'synthetic-account'),/does not support/);await assert.rejects(unlockWithPasskey(record,vault.record,'synthetic-account'),/cannot unlock/);
+  supported=false;await assert.rejects(createPasskey(vault.record,vault.recovery,'synthetic-account'),/does not support/);await assert.rejects(unlockWithPasskey(record,vault.record,'synthetic-account'),/does not return/);
   cancel=true;await assert.rejects(createPasskey(vault.record,vault.recovery,'synthetic-account'),{name:'NotAllowedError'});
  }finally{for(const [k,descriptor] of Object.entries(descriptors)){if(descriptor)Object.defineProperty(globalThis,k,descriptor);else delete globalThis[k];}}
 });

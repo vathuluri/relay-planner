@@ -16,7 +16,7 @@ export async function createVaultKeys(accountId){
  return {privateKey,recovery:Array.from(secret,b=>b.toString(16).padStart(2,'0')).join(''),record:{format:FORMAT,keyId:await keyId(publicKey),publicKey,wrappedPrivate:{iv:b64(iv),ciphertext:b64(ciphertext)}}};
 }
 export async function unlockVault(record,recovery,accountId){
- const hex=recovery.trim().replaceAll('-','');if(!/^[a-f0-9]{64}$/i.test(hex))throw Error('Use the 64-character recovery key.');
+ const hex=recovery.trim().replaceAll('-','');if(!/^[a-f0-9]{64}$/i.test(hex))throw Error('Use the 64-character generated vault password (or recovery key).');
  const raw=Uint8Array.from(hex.match(/../g),v=>parseInt(v,16));
  const key=await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['decrypt']);raw.fill(0);
  const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(record.wrappedPrivate.iv),additionalData:context(accountId,'recovery')},key,unb64(record.wrappedPrivate.ciphertext));

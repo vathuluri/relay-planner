@@ -62,3 +62,7 @@ The Netlify account build encrypts schedules and agent receipts on the originati
 ## Passkey unlock
 
 The hosted build supports passkey-based schedule unlock with WebAuthn PRF-compatible browsers/password managers. Email/password sign-in remains in place. Choose **Set up passkey** during encryption setup, or **Account → Passkey settings** to add one using an existing recovery file. Save an independent recovery backup when possible. See [setup, compatibility and validation limits](docs/passkeys.md). No real provider compatibility is claimed until tested by the owner.
+
+## Phone-compatible unlock
+
+The primary account unlock uses a random vault password saved in your password manager, with no mobile WebAuthn PRF requirement. Existing passkey accounts can retrieve that same secret from the working PC through Account → Set up phone access. Existing encrypted data stays intact. See [phone setup and validation boundaries](docs/phone-access.md).

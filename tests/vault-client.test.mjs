@@ -42,3 +42,8 @@ test('saved-passkey setup selects an existing credential without registering a f
  for(const [k,value] of Object.entries({document:doc,navigator:{credentials},PublicKeyCredential:class{},isSecureContext:true}))Object.defineProperty(globalThis,k,{configurable:true,writable:true,value});
  try{const {prepareVault}=await import('../public/vault-client.js');prepareVault({accountId:'alice',tasks:[],version:null,feedVersion:null});await doc.getElementById('vault-use-passkey').onclick();assert.equal(creates,0);assert.equal(gets,1);assert.match(doc.getElementById('vault-message').textContent,/Saved passkey verified/);assert.equal(doc.getElementById('vault-submit').disabled,false);}finally{for(const [k,d] of Object.entries(previous)){if(d)Object.defineProperty(globalThis,k,d);else delete globalThis[k];}dom.window.close();}
 });
+
+test('default vault password setup works without passkeys and requires saved-password confirmation',async()=>{
+ const dom=new JSDOM(await readFile(new URL('../dist/index.html',import.meta.url),'utf8')),doc=dom.window.document;const old=globalThis.document;globalThis.document=doc;
+ try{const {prepareVault}=await import('../public/vault-client.js');prepareVault({accountId:'alice',tasks:[],version:null,feedVersion:null});await doc.getElementById('vault-create-password').onclick();assert.match(doc.getElementById('vault-new-password').value,/^[a-f0-9]{64}$/);assert.equal(doc.getElementById('vault-password-result').hidden,false);assert.equal(doc.getElementById('vault-submit').disabled,true);const saved=doc.getElementById('vault-backed-up');saved.checked=true;saved.onchange();assert.equal(doc.getElementById('vault-submit').disabled,false);}finally{globalThis.document=old;dom.window.close();}
+});
