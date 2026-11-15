@@ -53,39 +53,46 @@ export function wireDeviceRequest({data,readSchedule,decodeSchedule,rememberDevi
  return {stop};
 }
 
-export function wireDeviceApprovals({readSchedule,decodeSchedule,vault,accountId,onVersion,api=pairingApi}){
+async function saveTransferEnvelope(body){
+ const response=await authenticatedFetch('/.netlify/functions/schedules',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const result=await response.json();if(!response.ok)throw Error(result.error||'Approval setup failed.');return result;
+}
+export function wireDeviceApprovals({readSchedule,decodeSchedule,vault,accountId,onVersion,api=pairingApi,saveTransfer=saveTransferEnvelope}){
  const $=id=>document.getElementById(id),dialog=$('device-approval-dialog');let busy=false,generation=0;
  const say=text=>$('device-approval-status').textContent=text;
  const current=async()=>{const data=await readSchedule();if(data.accountId!==accountId||data.vault?.keys.keyId!==vault.keys.keyId)throw Error('Account or encryption key changed.');return data;};
  const secret=async data=>{if(!data.vault.transferEnvelope)throw Error('Enable device approvals first.');const value=await open(data.vault.transferEnvelope,vault.privateKey,accountId,'device-transfer:'+vault.keys.keyId);const recovery=value.recovery.trim().replaceAll('-','').toLowerCase();await unlockVault(vault.keys,recovery,accountId);return recovery;};
+ const enable=async(data,useExisting,ticket)=>{
+  if(data.vault.transferEnvelope)return data;
+  const existing=useExisting?$('device-approval-existing').value:'';$('device-approval-existing').value='';let recovery;
+  if(useExisting){await unlockVault(vault.keys,existing,accountId);recovery=existing;}
+  else{if(!data.vault.passkey)throw Error('Use the recovery option to enable approvals with your vault password.');say('Approve your working passkey to enable and continue.');recovery=(await recoverVaultPassword(data.vault.passkey,vault.keys,accountId)).recovery;}
+  recovery=recovery.trim().replaceAll('-','').toLowerCase();const transferEnvelope=await seal({recovery},vault.keys.publicKey,accountId,'device-transfer:'+vault.keys.keyId);
+  const checked=await open(transferEnvelope,vault.privateKey,accountId,'device-transfer:'+vault.keys.keyId);if(checked.recovery!==recovery)throw Error('Local verification failed.');
+  if(!dialog.open||ticket!==generation)throw Error('Approval cancelled.');
+  await saveTransfer({action:'add-device-transfer',accountId,version:data.version,transferEnvelope});
+  const latest=await current();await secret(latest);onVersion(latest);return latest;
+ };
  const load=async()=>{
   const ticket=++generation;$('device-approval-list').replaceChildren();say('Loading requests…');
   try{
    const data=await current();if(ticket!==generation||!dialog.open)return;$('device-approval-enable').hidden=!!data.vault.transferEnvelope;$('device-approval-backup').hidden=!!data.vault.transferEnvelope;
    const result=await api();if(ticket!==generation||!dialog.open)return;const pending=result.requests.filter(r=>r.status==='pending'&&r.request.expiresAt>Date.now());
+   $('device-approval-enable').hidden=!!data.vault.transferEnvelope||!!(pending.length&&data.vault.passkey);
    for(const row of pending){
     const card=document.createElement('section');card.className='device-request-card';const code=document.createElement('strong');code.textContent=await deviceCode(accountId,row.request);
     const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';label.append(check,document.createTextNode(' This full code matches the one on my phone.'));
-    const approve=document.createElement('button');approve.type='button';approve.className='button primary';approve.textContent='Approve this device';approve.disabled=true;
-    check.onchange=()=>approve.disabled=!check.checked||busy||!data.vault.transferEnvelope;
-    approve.onclick=async()=>{if(!check.checked||busy)return;const approvalGeneration=generation;busy=true;approve.disabled=true;try{const latest=await current();const recovery=await secret(latest);const response=await approveDevice(row.request,recovery,accountId);if(!dialog.open||approvalGeneration!==generation)return;await api({action:'approve',accountId,id:row.request.id,response});say('Approval sent. The phone must receive it before the request expires.');card.remove();}catch(error){say(error.message);}finally{busy=false;approve.disabled=!check.checked;}};
+    const approve=document.createElement('button');approve.type='button';approve.className='button primary';approve.textContent=data.vault.transferEnvelope?'Approve this device':'Enable and approve with passkey';approve.disabled=true;
+    check.onchange=()=>approve.disabled=!check.checked||busy;
+    approve.onclick=async()=>{if(!check.checked||busy)return;const approvalGeneration=generation;busy=true;approve.disabled=true;try{if(row.request.expiresAt<=Date.now())throw Error('This request expired. Request access again on your phone.');let latest=await current();latest=await enable(latest,false,approvalGeneration);const recovery=await secret(latest);const response=await approveDevice(row.request,recovery,accountId);if(!dialog.open||approvalGeneration!==generation)return;await api({action:'approve',accountId,id:row.request.id,response});say('Approval sent. The phone must receive it before the request expires.');card.remove();}catch(error){say(error.name==='NotAllowedError'?'Passkey verification cancelled. Try the approval again.':error.message);}finally{busy=false;approve.disabled=!check.checked;}};
     const deny=document.createElement('button');deny.type='button';deny.className='button';deny.textContent='Deny';deny.onclick=async()=>{deny.disabled=true;try{await api({action:'cancel',accountId,id:row.request.id});card.remove();say('Request denied.');}catch(error){say(error.message);deny.disabled=false;}};
     card.append(code,label,approve,deny);$('device-approval-list').append(card);
    }
-   say(data.vault.transferEnvelope?(pending.length?'Compare both screens. Only approve a request you just made.':'No pending requests. Request access on your phone, then Refresh.'):'Enable approvals once using your working passkey, then compare the request code.');
+   say(data.vault.transferEnvelope?(pending.length?'Compare both screens. Only approve a request you just made.':'No pending requests. Request access on your phone, then Refresh.'):pending.length?'Compare the full code, check the match, then choose Enable and approve with passkey.':'Enable approvals once using your working passkey, then request access on your phone.');
   }catch(error){say(error.message);}
  };
  $('device-approval-open').onclick=async()=>{dialog.showModal();await load();};$('device-approval-refresh').onclick=load;$('device-approval-close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{generation++;$('device-approval-existing').value='';$('device-approval-list').replaceChildren();});
- $('device-approval-enable').onclick=async()=>{
-  if(busy)return;const enableGeneration=generation;busy=true;$('device-approval-enable').disabled=true;const existing=$('device-approval-existing').value;$('device-approval-existing').value='';
-  try{
-   const data=await current();let recovery;
-   if(existing){await unlockVault(vault.keys,existing,accountId);recovery=existing;}
-   else{if(!data.vault.passkey)throw Error('Enter your existing vault password under the recovery option.');recovery=(await recoverVaultPassword(data.vault.passkey,vault.keys,accountId)).recovery;}
-   recovery=recovery.trim().replaceAll('-','').toLowerCase();const transferEnvelope=await seal({recovery},vault.keys.publicKey,accountId,'device-transfer:'+vault.keys.keyId);
-   const checked=await open(transferEnvelope,vault.privateKey,accountId,'device-transfer:'+vault.keys.keyId);if(checked.recovery!==recovery)throw Error('Local verification failed.');
-   if(!dialog.open||enableGeneration!==generation)return;const response=await authenticatedFetch('/.netlify/functions/schedules',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'add-device-transfer',accountId,version:data.version,transferEnvelope})});const result=await response.json();if(!response.ok)throw Error(result.error||'Approval setup failed.');
-   const latest=await current();await secret(latest);onVersion(latest);await load();
-  }catch(error){say(error.name==='NotAllowedError'?'Passkey verification cancelled. Nothing changed.':error.message);}finally{busy=false;$('device-approval-enable').disabled=false;}
- };
+ const setup=async useExisting=>{if(busy)return;const ticket=generation;busy=true;try{await enable(await current(),useExisting,ticket);await load();}catch(error){say(error.name==='NotAllowedError'?'Passkey verification cancelled.':error.message);}finally{busy=false;}};
+ $('device-approval-enable').onclick=()=>setup(false);
+ $('device-approval-enable-recovery').onclick=()=>setup(true);
 }

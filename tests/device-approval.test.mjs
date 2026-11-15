@@ -6,8 +6,26 @@ import {createVaultKeys,seal,open} from '../public/crypto.js';
 import {createDeviceRequest,approveDevice,receiveDevice,deviceCode} from '../public/pairing-crypto.js';
 import {wireDeviceRequest,wireDeviceApprovals} from '../public/device-approval.js';
 import {createPairingHandler} from '../server/pairings.mjs';
+import {createPasskey} from '../public/passkeys.js';
 
 const keys=await createVaultKeys('alice');
+
+test('first approval can enable transfer and approve from one confirmed action despite autofill',async()=>{
+ const dom=new JSDOM(await readFile(new URL('../dist/index.html',import.meta.url),'utf8')),doc=dom.window.document;
+ const descriptors=Object.fromEntries(['document','navigator','PublicKeyCredential','isSecureContext'].map(k=>[k,Object.getOwnPropertyDescriptor(globalThis,k)]));
+ const dialog=doc.getElementById('device-approval-dialog');dialog.showModal=()=>dialog.open=true;dialog.close=()=>{dialog.open=false;dialog.dispatchEvent(new dom.window.Event('close'));};
+ let assertions=0,approvals=0,writes=0;const id=new Uint8Array([1,2,3,4]);
+ const credentials={async create(){return {rawId:id,getClientExtensionResults:()=>({prf:{enabled:true}})};},async get(){assertions++;return {rawId:id,getClientExtensionResults:()=>({prf:{results:{first:new Uint8Array(32).fill(8).buffer}}})};}};
+ for(const [k,value] of Object.entries({document:doc,navigator:{credentials},PublicKeyCredential:class{},isSecureContext:true}))Object.defineProperty(globalThis,k,{configurable:true,value});
+ try{
+  const passkey=await createPasskey(keys.record,keys.recovery,'alice'),phone=await createDeviceRequest(keys.record.keyId),data={accountId:'alice',version:'old',vault:{keys:keys.record,passkey}};
+  wireDeviceApprovals({accountId:'alice',vault:{keys:keys.record,privateKey:keys.privateKey},readSchedule:async()=>data,onVersion:()=>{},saveTransfer:async body=>{writes++;assert.equal(body.version,'old');assert.ok(!JSON.stringify(body).includes(keys.recovery));data.vault.transferEnvelope=body.transferEnvelope;data.version='new';},api:async body=>{if(body){approvals++;await receiveDevice(phone,body.response,keys.record,'alice');return {ok:true};}return {requests:[{request:phone.request,status:'pending'}]};}});
+  await doc.getElementById('device-approval-open').onclick();const card=doc.querySelector('.device-request-card'),check=card.querySelector('input'),button=card.querySelector('button');assert.match(button.textContent,/Enable and approve/);assert.equal(button.disabled,true);assert.equal(doc.getElementById('device-approval-enable').hidden,true);
+  const before=assertions;await button.onclick();assert.equal(assertions,before);check.checked=true;check.onchange();assert.equal(button.disabled,false);doc.getElementById('device-approval-existing').value='synthetic-autofilled-sign-in-password';await button.onclick();assert.equal(assertions,before+1);assert.equal(writes,1);assert.equal(approvals,1);assert.equal(doc.getElementById('device-approval-existing').value,'');
+ }finally{dialog.close();for(const [k,d] of Object.entries(descriptors)){if(d)Object.defineProperty(globalThis,k,d);else delete globalThis[k];}dom.window.close();}
+});
+
+
 test('device exchange decrypts only on the requesting device and binds account, vault, transcript and expiry',async()=>{
  const now=Date.now(),phone=await createDeviceRequest(keys.record.keyId,now),other=await createDeviceRequest(keys.record.keyId,now);
  assert.equal(phone.privateKey.extractable,false);const response=await approveDevice(phone.request,keys.recovery,'alice',now);
