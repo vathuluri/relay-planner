@@ -5,7 +5,7 @@ Use the same account and the same randomly generated vault password on both devi
 ## Existing passkey accounts
 
 1. Unlock on the browser where the passkey already works.
-2. Account → Set up phone access → Verify and retrieve vault password.
+2. Account → Set up phone access → Use my working passkey.
 3. Approve the existing passkey on that PC. Save the displayed vault password privately in Proton Pass. The owner must handle this credential; do not share it in chat.
 4. On the phone, sign in to the same Relay account, fill Vault password from that password-manager item, then Unlock. No new account, passkey, key rotation or data replacement is involved.
 
@@ -20,3 +20,5 @@ Create vault password generates the same 256-bit random recovery secret previous
 This reuses the account's existing random 256-bit AES recovery secret. Retrieving it uses the enrolled PC passkey and local AES-GCM decryption, followed by schedule decryption verification. It never uploads the secret, changes the private RSA key, or rewrites task/receipt ciphertext. Account login still uses Netlify Identity; the vault password never goes to Identity or the schedule API. A holder of both account access/ciphertext and this secret can read the schedule, so preserve it privately and keep a backup. Relay cannot reset it.
 
 Offline checks exercise passkey-to-vault-password recovery, normal Web Crypto unlock without PRF, account mismatch, dialog closure during verification, secret clearing and new-account confirmation. These establish the implemented path, not successful real-device testing. The owner must verify the deployed PC-to-phone flow. Native password autofill behavior depends on the owner's manager settings; manual paste into Vault password is supported. The browser-code and hosting metadata limitations in privacy-requirements.md still apply.
+
+Phone access uses explicit actions: Use my working passkey ignores any autofilled value in the separate recovery field. Verify existing vault password is available only as the alternative recovery action. Password-manager autofill must never select an authentication mode.
