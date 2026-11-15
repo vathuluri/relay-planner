@@ -21,7 +21,7 @@ export function wireDeviceRequest({data,readSchedule,decodeSchedule,rememberDevi
    local=await createDeviceRequest(data.vault.keys.keyId);if(ticket!==generation)return;
    await api({action:'request',accountId:data.accountId,request:local.request});if(ticket!==generation)return;
    const code=await deviceCode(data.accountId,local.request);if(ticket!==generation)return;$('pair-request-code').textContent=code;$('pair-request-panel').hidden=false;
-   status('On your unlocked PC: Account → Approve a device. Compare the full code before approving. This request expires in five minutes. Select Trust this device below if you want to remember access.');
+   status('On your other device: Account → Approve a device. Match this code. Expires in 5 minutes.');
    const poll=async()=>{
     if(!active||ticket!==generation)return;
     if(Date.now()>=local.request.expiresAt){stop();status('Request expired. Request access again.');return;}
@@ -81,14 +81,14 @@ export function wireDeviceApprovals({readSchedule,decodeSchedule,vault,accountId
    $('device-approval-enable').hidden=!!data.vault.transferEnvelope||!!(pending.length&&data.vault.passkey);
    for(const row of pending){
     const card=document.createElement('section');card.className='device-request-card';const code=document.createElement('strong');code.textContent=await deviceCode(accountId,row.request);
-    const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';label.append(check,document.createTextNode(' This full code matches the one on my phone.'));
-    const approve=document.createElement('button');approve.type='button';approve.className='button primary';approve.textContent=data.vault.transferEnvelope?'Approve this device':'Enable and approve with passkey';approve.disabled=true;
+    const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';label.append(check,document.createTextNode(' The code matches my phone.'));
+    const approve=document.createElement('button');approve.type='button';approve.className='button primary';approve.textContent=data.vault.transferEnvelope?'Approve device':'Approve with passkey';approve.disabled=true;
     check.onchange=()=>approve.disabled=!check.checked||busy;
     approve.onclick=async()=>{if(!check.checked||busy)return;const approvalGeneration=generation;busy=true;approve.disabled=true;try{if(row.request.expiresAt<=Date.now())throw Error('This request expired. Request access again on your phone.');let latest=await current();latest=await enable(latest,false,approvalGeneration);const recovery=await secret(latest);const response=await approveDevice(row.request,recovery,accountId);if(!dialog.open||approvalGeneration!==generation)return;await api({action:'approve',accountId,id:row.request.id,response});say('Approval sent. The phone must receive it before the request expires.');card.remove();}catch(error){say(error.name==='NotAllowedError'?'Passkey verification cancelled. Try the approval again.':error.message);}finally{busy=false;approve.disabled=!check.checked;}};
     const deny=document.createElement('button');deny.type='button';deny.className='button';deny.textContent='Deny';deny.onclick=async()=>{deny.disabled=true;try{await api({action:'cancel',accountId,id:row.request.id});card.remove();say('Request denied.');}catch(error){say(error.message);deny.disabled=false;}};
     card.append(code,label,approve,deny);$('device-approval-list').append(card);
    }
-   say(data.vault.transferEnvelope?(pending.length?'Compare both screens. Only approve a request you just made.':'No pending requests. Request access on your phone, then Refresh.'):pending.length?'Compare the full code, check the match, then choose Enable and approve with passkey.':'Enable approvals once using your working passkey, then request access on your phone.');
+   say(data.vault.transferEnvelope?(pending.length?'Compare both screens. Only approve a request you just made.':'No pending requests. Request access on your phone, then Refresh.'):pending.length?'Confirm the code, then approve with your passkey.':'Enable approvals once using your working passkey, then request access on your phone.');
   }catch(error){say(error.message);}
  };
  $('device-approval-open').onclick=async()=>{dialog.showModal();await load();};$('device-approval-refresh').onclick=load;$('device-approval-close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{generation++;$('device-approval-existing').value='';$('device-approval-list').replaceChildren();});
