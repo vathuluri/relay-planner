@@ -6,6 +6,8 @@ Employees plan work, record what they actually did, and submit weekly timesheets
 
 ## Current implementation
 
+Imported activity cards support private display-title edits. The owner can rename a card for later review; its original result, agent and execution timestamps remain unchanged. The display title is stored inside the encrypted schedule, separately from the append-only encrypted receipt.
+
 Interactive browser-local calendar prototype: week/month views, phone agenda, task editing and rescheduling, unscheduled queue, human/agent assignments, simulated task review, undo and local saving. All sample content is synthetic.
 
 Time entry, timers, timesheet submission, approvals and exports are **planned, not implemented**. The Netlify build adds personal account sign-in and cloud schedule storage; deployment verification is still pending. The original demo remains browser-local. The current review queue reviews task outcomes, not timesheets.

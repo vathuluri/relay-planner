@@ -47,3 +47,16 @@ test('default vault password setup works without passkeys and requires saved-pas
  const dom=new JSDOM(await readFile(new URL('../dist/index.html',import.meta.url),'utf8')),doc=dom.window.document;const old=globalThis.document;globalThis.document=doc;
  try{const {prepareVault}=await import('../public/vault-client.js');prepareVault({accountId:'alice',tasks:[],version:null,feedVersion:null});await doc.getElementById('vault-create-password').onclick();assert.match(doc.getElementById('vault-new-password').value,/^[a-f0-9]{64}$/);assert.equal(doc.getElementById('vault-password-result').hidden,false);assert.equal(doc.getElementById('vault-submit').disabled,true);const saved=doc.getElementById('vault-backed-up');saved.checked=true;saved.onchange();assert.equal(doc.getElementById('vault-submit').disabled,false);}finally{globalThis.document=old;dom.window.close();}
 });
+
+test('activity display titles round-trip as private encrypted overrides without rewriting source receipts',async()=>{
+ const {createVaultKeys,seal}=await import('../public/crypto.js');const {decodeSchedule,saveEncrypted}=await import('../public/vault-client.js');
+ const keys=await createVaultKeys('synthetic'),id='activity-'+ 'a'.repeat(40),original={id,title:'Original generic title',status:'review',history:[],result:'Original evidence',activity:{agent:'Synthetic worker',completedAt:'2026-11-18T10:00:00Z'}};
+ const envelope=await seal({tasks:[],reviews:{}},keys.record.publicKey,'synthetic','schedule'),receipt=await seal(original,keys.record.publicKey,'synthetic',id);
+ const data={accountId:'synthetic',vault:{keys:keys.record,envelope},feed:[{id,keyId:keys.record.keyId,envelope:receipt}]},before=JSON.stringify(receipt),fetchBefore=globalThis.fetch;let saved;
+ try{
+  const tasks=await decodeSchedule(data,keys.privateKey);tasks[0].title='Synthetic project — concrete outcome';
+  const {encryptSchedule}=await import('../public/vault-client.js');saved={envelope:await encryptSchedule(tasks,{keys:keys.record,accountId:'synthetic',feedIds:[id]})};assert.ok(!JSON.stringify(saved).includes('concrete outcome'));
+  const after=await decodeSchedule({...data,vault:{keys:keys.record,envelope:saved.envelope}},keys.privateKey);
+  assert.equal(after[0].title,'Synthetic project — concrete outcome');assert.equal(after[0].activity.receiptTitle,original.title);assert.equal(after[0].result,original.result);assert.equal(after[0].status,original.status);assert.equal(JSON.stringify(receipt),before);
+ }finally{globalThis.fetch=fetchBefore;}
+});

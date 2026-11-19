@@ -77,6 +77,14 @@ test('cloud schedule saves only through the account API and rolls back failed wr
     await new Promise(resolve=>setImmediate(resolve));
     assert.equal(globalThis.cloudSaved[0].title,'Synthetic QA task');
     assert.equal(localStorage.getItem('relay-planner-demo-v1'),null);
+    const receipt={id:'synthetic-activity',title:'Generic activity',project:'engineering',owner:'code',date:'2026-11-16',time:'',status:'review',notes:'original notes',result:'original worker evidence',link:'',history:[],activity:{agent:'Synthetic agent',kind:'agent',completedAt:'2026-11-16T10:00:00Z'}};
+    document.dispatchEvent(new window.CustomEvent('relay:schedule',{detail:[receipt]}));
+    const opener=document.createElement('button');opener.dataset.task=receipt.id;document.body.append(opener);opener.click();
+    assert.equal(document.querySelector('#save-task').hidden,false);assert.equal(document.querySelector('#task-title').readOnly,false);
+    assert.equal(document.querySelector('#task-options').hidden,true);assert.equal(document.querySelector('#delete-task').hidden,true);
+    document.querySelector('#task-title').value='Synthetic project — useful outcome';document.querySelector('#task-status').value='done';document.querySelector('#task-result').value='must not overwrite evidence';
+    document.querySelector('#task-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));await new Promise(resolve=>setImmediate(resolve));
+    const renamed=globalThis.cloudSaved[0];assert.equal(renamed.title,'Synthetic project — useful outcome');assert.equal(renamed.status,receipt.status);assert.equal(renamed.result,receipt.result);assert.deepEqual(renamed.activity,receipt.activity);
     globalThis.relaySession.save=async()=>{throw Error('This schedule changed on another device.');};
     click('#new-task');document.querySelector('#task-title').value='Must not save';
     document.querySelector('#task-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));

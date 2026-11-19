@@ -80,7 +80,7 @@ function openTask(id=null,date=selected){
   editing=id;const t=tasks.find(t=>t.id===id)||{title:'',project:'launch',owner:'human',date,time:'',status:'planned',notes:'',result:'',link:''};
   $('dialog-title').textContent=id?'Edit task':'Add a task';$('dialog-eyebrow').textContent='';$('task-options').open=false;
   for(const field of ['title','project','owner','date','time','status','notes','result','link'])$(`task-${field}`).value=t[field]||'';
-  syncQuickDates();$('delete-task').hidden=!id||!!t.activity;$('save-task').hidden=!!t.activity;$('task-title').readOnly=!!t.activity;$('task-options').hidden=!!t.activity;document.querySelector('.quick-dates').hidden=!!t.activity;$('activity-receipt').hidden=!t.activity;$('activity-receipt').textContent=t.activity?`${t.activity.agent} · ${t.activity.kind}\nCompleted: ${t.activity.completedAt}\n${t.activity.startedAt?'Started: '+t.activity.startedAt+'\n':''}${t.result}`:'';
+  syncQuickDates();$('delete-task').hidden=!id||!!t.activity;$('save-task').hidden=false;$('save-task').textContent=t.activity?'Save title':'Save task';$('task-title').readOnly=false;$('task-options').hidden=!!t.activity;document.querySelector('.quick-dates').hidden=!!t.activity;$('activity-receipt').hidden=!t.activity;$('activity-receipt').textContent=t.activity?`${t.activity.agent} · ${t.activity.kind}\nCompleted: ${t.activity.completedAt}\n${t.activity.startedAt?'Started: '+t.activity.startedAt+'\n':''}${t.activity.receiptTitle?'Original title: '+t.activity.receiptTitle+'\n':''}${t.result}\n\nYou can rename this card. Its original result and timestamps stay unchanged.`:'';
   $('task-history').innerHTML=(t.history||[]).map(e=>`<div>${esc(dateLabel(new Date(e.at),{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))} · ${esc(e.text)}</div>`).join('');
   $('task-dialog').showModal();$('task-title').focus();
 }
@@ -97,7 +97,8 @@ $('new-task').onclick=()=>openTask();$('add-idea').onclick=()=>openTask(null,'')
 for(const id of ['close-dialog','cancel-dialog'])$(id).onclick=()=>$('task-dialog').close();
 $('task-dialog').addEventListener('click',e=>{if(e.target===$('task-dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
 $('task-form').onsubmit=e=>{
-  e.preventDefault();if(tasks.find(t=>t.id===editing)?.activity){$('task-dialog').close();return;}const title=$('task-title').value.trim();if(!title){$('task-title').setCustomValidity('Enter a task title.');$('task-title').reportValidity();return;}
+  e.preventDefault();const title=$('task-title').value.trim();if(!title){$('task-title').setCustomValidity('Enter a task title.');$('task-title').reportValidity();return;}
+  if(tasks.find(t=>t.id===editing)?.activity){change('Activity title updated',list=>list.map(t=>t.id===editing?event({...t,title},'Display title updated; source receipt unchanged'):t));$('task-dialog').close();return;}
   const link=$('task-link').value.trim();if(link&&!/^https?:\/\//i.test(link)){$('task-link').setCustomValidity('Use an http or https link.');$('task-link').reportValidity();return;}
   const old=tasks.find(t=>t.id===editing);const task={id:editing||crypto.randomUUID(),history:old?.history||[]};
   for(const field of ['title','project','owner','date','time','status','notes','result','link'])task[field]=$(`task-${field}`).value.trim();

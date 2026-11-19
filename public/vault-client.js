@@ -16,7 +16,7 @@ export async function decodeSchedule(data,privateKey){
  if(await keyId(data.vault.keys.publicKey)!==data.vault.keys.keyId)throw Error('Encryption key does not match.');
  const saved=await open(data.vault.envelope,privateKey,data.accountId,'schedule');
  if(!Array.isArray(saved.tasks))throw Error('Encrypted schedule is invalid.');
- const feed=await Promise.all((data.feed??[]).map(async r=>{if(r.keyId!==data.vault.keys.keyId)throw Error('Receipt key mismatch.');const task=await open(r.envelope,privateKey,data.accountId,r.id);if(task.id!==r.id||!task.activity)throw Error('Invalid encrypted receipt.');const review=saved.reviews?.[r.id];return review?{...task,status:review.status,history:review.history}:task;}));
+ const feed=await Promise.all((data.feed??[]).map(async r=>{if(r.keyId!==data.vault.keys.keyId)throw Error('Receipt key mismatch.');const task=await open(r.envelope,privateKey,data.accountId,r.id);if(task.id!==r.id||!task.activity)throw Error('Invalid encrypted receipt.');const review=saved.reviews?.[r.id];const original={...task,activity:{...task.activity,receiptTitle:task.title}};return review?{...original,status:review.status,history:review.history,...(typeof review.title==='string'&&review.title.trim()&&review.title.length<=120?{title:review.title}:{} )}:original;}));
  return [...saved.tasks,...feed];
 }
 export async function prepareVault(data,{forceUnlock=false}={}){
@@ -81,4 +81,5 @@ export async function prepareVault(data,{forceUnlock=false}={}){
   };
  });
 }
-export async function saveEncrypted(tasks,{keys,accountId,version,feedIds=[]}){const reviews={};for(const t of tasks.filter(t=>feedIds.includes(t.id)))reviews[t.id]={status:t.status,history:t.history??[]};const envelope=await seal({tasks:tasks.filter(t=>!feedIds.includes(t.id)),reviews},keys.publicKey,accountId,'schedule');return request({accountId,version,keys,envelope});}
+export async function encryptSchedule(tasks,{keys,accountId,feedIds=[]}){const reviews={};for(const t of tasks.filter(t=>feedIds.includes(t.id)))reviews[t.id]={status:t.status,history:t.history??[],title:t.title};return seal({tasks:tasks.filter(t=>!feedIds.includes(t.id)),reviews},keys.publicKey,accountId,'schedule');}
+export async function saveEncrypted(tasks,{keys,accountId,version,feedIds=[]}){const envelope=await encryptSchedule(tasks,{keys,accountId,feedIds});return request({accountId,version,keys,envelope});}
