@@ -20,6 +20,10 @@ Older browsers cannot write plaintext. Existing public-code demonstrations remai
 
 Hosting still sees account identifiers, authentication traffic, request times, record counts and ciphertext sizes. A compromised unlocked device or malicious replacement JavaScript from the hosting origin can access plaintext and use device keys; this browser app does not protect against that threat. HTTPS protects transport. Application encryption makes stored record content unreadable without a user's private key; do not promise absolute protection from every third party.
 
+An invalid activity receipt is excluded from the calendar with a visible verification warning; other verified tasks remain available. The encrypted source receipt is retained, and private review/title overrides for it survive subsequent saves. An unreadable primary schedule still fails closed. Hiding an invalid receipt is not proof of its sender or automatic deletion of the source record.
+
+Reporting uses bearer authorization, not sender signatures. An attacker who can terminate trusted TLS and capture a reporting token can append forged reports using the public encryption key, although that token cannot read the existing schedule through the reporting endpoint. Receipt isolation protects calendar availability from one corrupt encrypted append; it does not resolve stolen-token forgery or malicious application JavaScript.
+
 Replacing active records does not prove erasure from provider backups, previous exports or historical logs. Provider retention and deletion policies must be handled separately. No raw task bodies or keys are logged by the functions. Do not enable request-body logging or analytics that capture decrypted UI content.
 
 Automated tests cover recovery, wrong keys, tampering, context binding, tenant isolation, encrypted migration/readback, stale writes, delayed cleanup, reporting revocation, ciphertext retries and child exit codes. Live account migration and phone unlock must be verified separately. This implementation has not had an independent cryptographic security audit.

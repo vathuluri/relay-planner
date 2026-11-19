@@ -2,6 +2,7 @@ import {wireDeviceRequest} from './device-approval.js';
 import {beginPasskey,createPasskey,useSavedPasskey,unlockWithPasskey,passkeysAvailable} from './passkeys.js';
 import {createVaultKeys,unlockVault,seal,open,keyId} from './crypto.js';
 import {authenticatedFetch} from './auth-fetch.js';
+import {decodeActivityFeed} from './receipt-integrity.js';
 const $=id=>document.getElementById(id);
 export function downloadPrivate(name,value){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 async function deviceKey(accountId,value){
@@ -11,14 +12,14 @@ async function deviceKey(accountId,value){
 async function confirmMigration(data){if(data.vault?.migratedFeedVersion)await request({action:'confirm-migration',accountId:data.accountId,version:data.version},'POST');}
 export const forgetDevice=accountId=>deviceKey(accountId,null);
 async function request(body,method='PUT'){const r=await authenticatedFetch('/.netlify/functions/schedules',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const value=await r.json();if(!r.ok){const error=Error(value.error||'Encrypted save failed.');error.status=r.status;throw error;}return value;}
-export async function decodeSchedule(data,privateKey){
+export async function decodeScheduleState(data,privateKey){
  if(!data.vault)throw Error('This account needs migration.');
  if(await keyId(data.vault.keys.publicKey)!==data.vault.keys.keyId)throw Error('Encryption key does not match.');
  const saved=await open(data.vault.envelope,privateKey,data.accountId,'schedule');
  if(!Array.isArray(saved.tasks))throw Error('Encrypted schedule is invalid.');
- const feed=await Promise.all((data.feed??[]).map(async r=>{if(r.keyId!==data.vault.keys.keyId)throw Error('Receipt key mismatch.');const task=await open(r.envelope,privateKey,data.accountId,r.id);if(task.id!==r.id||!task.activity)throw Error('Invalid encrypted receipt.');const review=saved.reviews?.[r.id];const original={...task,activity:{...task.activity,receiptTitle:task.title}};return review?{...original,status:review.status,history:review.history,...(typeof review.title==='string'&&review.title.trim()&&review.title.length<=120?{title:review.title}:{} )}:original;}));
- return [...saved.tasks,...feed];
+ return decodeActivityFeed(data,saved,privateKey);
 }
+export async function decodeSchedule(data,privateKey){return (await decodeScheduleState(data,privateKey)).tasks;}
 export async function prepareVault(data,{forceUnlock=false}={}){
  const panel=$('vault-gate');$('account-form').hidden=true;document.querySelector('.account-actions').hidden=true;panel.hidden=false;
  const existing=!!data.vault;let generated=null,privateKey=null,committedVersion=null,passkey=data.vault?.passkey??null,registration=null,processing=false;const lock=value=>{processing=value;for(const id of ['vault-create-password','vault-passkey','vault-use-passkey','vault-generate','vault-import','vault-submit'])$(id).disabled=value;if(!existing)$('vault-submit').hidden=!generated;};$('account-message').textContent='';$('vault-submit').disabled=!existing;$('vault-backed-up').onchange=()=>{$('vault-submit').disabled=!generated||(!passkey&&!$('vault-backed-up').checked);};
@@ -81,5 +82,5 @@ export async function prepareVault(data,{forceUnlock=false}={}){
   };
  });
 }
-export async function encryptSchedule(tasks,{keys,accountId,feedIds=[]}){const reviews={};for(const t of tasks.filter(t=>feedIds.includes(t.id)))reviews[t.id]={status:t.status,history:t.history??[],title:t.title};return seal({tasks:tasks.filter(t=>!feedIds.includes(t.id)),reviews},keys.publicKey,accountId,'schedule');}
-export async function saveEncrypted(tasks,{keys,accountId,version,feedIds=[]}){const envelope=await encryptSchedule(tasks,{keys,accountId,feedIds});return request({accountId,version,keys,envelope});}
+export async function encryptSchedule(tasks,{keys,accountId,feedIds=[],retainedReviews={}}){const reviews={...retainedReviews};for(const t of tasks.filter(t=>feedIds.includes(t.id)))reviews[t.id]={status:t.status,history:t.history??[],title:t.title};return seal({tasks:tasks.filter(t=>!feedIds.includes(t.id)),reviews},keys.publicKey,accountId,'schedule');}
+export async function saveEncrypted(tasks,{keys,accountId,version,feedIds=[],retainedReviews={}}){const envelope=await encryptSchedule(tasks,{keys,accountId,feedIds,retainedReviews});return request({accountId,version,keys,envelope});}
