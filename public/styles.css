@@ -65,3 +65,33 @@ main{margin-left:196px;padding:0 26px}.topbar{height:69px}.breadcrumb{color:#788
 #calendar[data-density=compact] .hour-add{position:absolute;right:2px;bottom:3px;width:18px;min-height:24px;font-size:13px;background:transparent;padding:0}
 #calendar[data-density=compact] .hourly-grid .day-heading{min-height:58px;padding:7px 4px}
 @media(max-width:760px){.hourly-display{padding:5px 8px}.density-control button{font-size:10px;padding:5px 8px}#calendar[data-density=compact] .hour-cell .task-title{font-size:11px}}
+/* The calendar is the main workspace, not a dashboard preview. */
+body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .page-heading{display:none}
+.planning-layout{grid-template-columns:minmax(0,1fr)}
+#queue:not(.open){display:none}
+.planning-layout:has(#queue.open){grid-template-columns:minmax(0,1fr) 240px}
+main{max-width:none}
+@media(min-width:761px){
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])){height:100dvh;overflow:hidden;display:flex;flex-direction:column}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) #workspace{flex:1;min-height:0;display:flex;flex-direction:column}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) main{display:flex;flex-direction:column;flex:1;min-height:0;padding:0 18px 8px}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .topbar{height:54px;min-height:54px;flex-shrink:0}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) #calendar-page{order:1;flex:1;min-height:0;display:flex;flex-direction:column;padding-top:10px}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .calendar-toolbar{flex-shrink:0;margin-bottom:9px}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .planning-layout{flex:1;min-height:0}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .calendar-panel{min-height:0;display:flex;flex-direction:column;overflow:hidden}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) #calendar{flex:1;min-height:0;overflow:auto}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) #calendar:has(.hourly-scroll){display:flex;flex-direction:column;overflow:hidden}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .hourly-display{flex-shrink:0}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .hourly-scroll{flex:1;min-height:0;max-height:none}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .calendar-foot{flex-shrink:0;padding:6px 10px}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .summary{order:2;display:flex;gap:24px;flex-shrink:0;margin:0;padding:6px 0 0}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .summary>div{display:flex;gap:5px;padding:0;border:0;background:none;box-shadow:none}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .summary>div>span:last-child{display:flex;gap:6px;align-items:baseline}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .summary b{font-size:12px}.summary small{margin:0}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .summary-icon{display:none}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) .page-footer{display:none}
+ body:not(:has(#workspace[hidden])):has(#calendar-page:not([hidden])) #queue.open{overflow:auto;min-height:0}
+ .queue-toggle{display:inline-flex;align-items:center;gap:6px}
+}
+@media(max-width:760px){.planning-layout:has(#queue.open){grid-template-columns:minmax(0,1fr)}.hourly-scroll{max-height:none;height:calc(100dvh - 260px);min-height:300px}}
