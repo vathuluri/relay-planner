@@ -34,6 +34,7 @@ function seed(){
 }
 function load(){try{const saved=JSON.parse(localStorage.getItem(storageKey));if(Array.isArray(saved)&&saved.length<=1000&&saved.every(t=>t&&typeof t.id==='string'&&typeof t.title==='string'&&t.project in projects&&t.owner in owners&&t.status in statuses&&typeof t.date==='string'&&(!t.date||/^\d{4}-\d{2}-\d{2}$/.test(t.date))&&typeof t.time==='string'&&(!t.time||/^\d{2}:\d{2}$/.test(t.time))))return saved;}catch{}return seed();}
 let tasks=globalThis.relaySession?.tasks??load();
+let density='compact';try{if(localStorage.getItem('relay-calendar-density')==='expanded')density='expanded';}catch{}
 let cloudSaving=false;
 document.addEventListener('relay:schedule',e=>{if(!cloudSaving&&!$('task-dialog').open){tasks=e.detail;undoState=null;render();}});
 function persist(){try{localStorage.setItem(storageKey,JSON.stringify(tasks));return true;}catch{return false;}}
@@ -48,12 +49,13 @@ function renderCalendar(){
   $('range-label').textContent=view==='month'?dateLabel(cursor,{month:'long',year:'numeric'}):`${dateLabel(start,{month:'short',day:'numeric'})} – ${dateLabel(addDays(start,6),{month:'short',day:'numeric',year:'numeric'})}`;
   document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===view);b.setAttribute('aria-pressed',String(b.dataset.view===view));});
   const isToday=date=>dayKey(date)===dayKey(now)?' is-today':'';
+  $('calendar').dataset.density=density;
   if(view==='week'||view==='day'){
     const visible=view==='day'?[parseDay(selected)]:days,keys=visible.map(dayKey),{cells,untimed}=hourlyRows(tasks,keys);
     const previous=$('calendar').querySelector('.hourly-scroll'),scroll=previous?.dataset.period===view+keys.join() ? previous.scrollTop:null;
     if(view==='day')$('range-label').textContent=dateLabel(parseDay(selected),{weekday:'short',month:'short',day:'numeric',year:'numeric'});
     const cell=(list,i,hour)=>`<div class="hour-cell" data-drop="${keys[i]}">${list.map(t=>card(t)).join('')}<button class="hour-add" data-add="${keys[i]}" ${hour===null?'':`data-hour="${hour}"`} aria-label="Plan a task ${hour===null?'without a time':`at ${hourLabel(hour)}`} on ${keys[i]}">+</button></div>`;
-    $('calendar').innerHTML=`<p class="hourly-note">Hourly blocks · Planned tasks and recorded finish times · Card height does not represent duration</p><div class="hourly-scroll ${view==='day'?'single-day':''}" tabindex="0" aria-label="Hourly calendar, scroll for all 24 hours" data-period="${view+keys.join()}"><div class="hourly-grid" style="--days:${visible.length}"><div class="hour-corner">Time</div>${visible.map(date=>`<section class="day-column day-heading${isToday(date)}"><span>${dateLabel(date,{weekday:'short'})}</span><button class="day-number" data-day="${dayKey(date)}" aria-label="Open ${dateLabel(date,{dateStyle:'full'})}">${date.getDate()}</button></section>`).join('')}${untimed.some(list=>list.length)?`<div class="hour-label untimed-label">No time</div>${untimed.map((list,i)=>cell(list,i,null)).join('')}`:''}${cells.map((row,hour)=>`<div class="hour-label" data-hour-row="${hour}">${hourLabel(hour)}</div>${row.map((list,i)=>cell(list,i,hour)).join('')}`).join('')}</div></div>`;
+    $('calendar').innerHTML=`<div class="hourly-display"><span class="hourly-note">Hourly blocks <span title="Cards show planned or recorded finish times. Height does not represent duration.">ⓘ</span></span><div class="segmented density-control" role="group" aria-label="Calendar card detail"><button data-density="compact" aria-pressed="${density==='compact'}" class="${density==='compact'?'active':''}">Compact</button><button data-density="expanded" aria-pressed="${density==='expanded'}" class="${density==='expanded'?'active':''}">Expanded</button></div></div><div class="hourly-scroll ${view==='day'?'single-day':''}" tabindex="0" aria-label="Hourly calendar, scroll for all 24 hours" data-period="${view+keys.join()}"><div class="hourly-grid" style="--days:${visible.length}"><div class="hour-corner">Time</div>${visible.map(date=>`<section class="day-column day-heading${isToday(date)}"><span>${dateLabel(date,{weekday:'short'})}</span><button class="day-number" data-day="${dayKey(date)}" aria-label="Open ${dateLabel(date,{dateStyle:'full'})}">${date.getDate()}</button></section>`).join('')}${untimed.some(list=>list.length)?`<div class="hour-label untimed-label">No time</div>${untimed.map((list,i)=>cell(list,i,null)).join('')}`:''}${cells.map((row,hour)=>`<div class="hour-label" data-hour-row="${hour}">${hourLabel(hour)}</div>${row.map((list,i)=>cell(list,i,hour)).join('')}`).join('')}</div></div>`;
     const area=$('calendar').querySelector('.hourly-scroll');
     const first=cells.findIndex(row=>row.some(list=>list.length));
     area.scrollTop=scroll??Math.max(0,($('calendar').querySelector(`[data-hour-row="${first<0?8:first}"]`)?.offsetTop||0)-80);
@@ -94,6 +96,7 @@ function openTask(id=null,date=selected){
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.density){density=b.dataset.density;try{localStorage.setItem('relay-calendar-density',density);}catch{}render();return;}
   if(b.dataset.task){openTask(b.dataset.task);return;}
   if(b.hasAttribute('data-add')){openTask(null,b.dataset.add);if(b.dataset.hour!==undefined){$('task-time').value=String(b.dataset.hour).padStart(2,'0')+':00';$('task-options').open=true;}return;}
   if(b.dataset.day){selected=b.dataset.day;cursor=parseDay(selected);view='day';render();return;}

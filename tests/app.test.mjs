@@ -17,6 +17,12 @@ test('demo supports task creation, local saving, review, undo and calendar views
     const click=selector=>{const element=document.querySelector(selector);assert.ok(element,selector);element.click();};
     assert.equal(document.querySelectorAll('.day-column').length,7);
     assert.equal(document.querySelectorAll('[data-hour-row]').length,24);
+    assert.equal(document.querySelector('#calendar').dataset.density,'compact');
+    click('[data-density="expanded"]');
+    assert.equal(document.querySelector('#calendar').dataset.density,'expanded');
+    assert.equal(localStorage.getItem('relay-calendar-density'),'expanded');
+    click('[data-density="compact"]');
+    assert.equal(document.querySelector('button[data-density="compact"]').getAttribute('aria-pressed'),'true');
     click('[data-view="day"]');
     assert.equal(document.querySelectorAll('.day-column').length,1);
     click('.hour-add[data-hour="14"]');
