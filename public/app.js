@@ -1,4 +1,5 @@
 import {taskTimeLabel} from './activity-time.js';
+import {hourlyRows,hourLabel} from './hourly.js';
 import {dayKey,parseDay,addDays,weekStart,monthDays,sortTasks,reschedule} from './calendar.js';
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -7,7 +8,7 @@ const owners={human:'Human',code:'Code agent',research:'Research agent',writing:
 const statuses={planned:'Planned',working:'Working',review:'Needs review',done:'Done',attention:'Needs attention'};
 const storageKey='relay-planner-demo-v1';
 const now=new Date();now.setHours(12,0,0,0);
-let cursor=new Date(now),selected=dayKey(now),view=matchMedia('(max-width:760px)').matches?'agenda':'week',page='calendar',editing=null,undoState=null,toastTimer;
+let cursor=new Date(now),selected=dayKey(now),view=matchMedia('(max-width:760px)').matches?'day':'week',page='calendar',editing=null,undoState=null,toastTimer;
 const dateLabel=(date,options)=>new Intl.DateTimeFormat('en-US',options).format(date);
 function seed(){
   const start=weekStart(now),day=n=>dayKey(addDays(start,n));
@@ -47,8 +48,15 @@ function renderCalendar(){
   $('range-label').textContent=view==='month'?dateLabel(cursor,{month:'long',year:'numeric'}):`${dateLabel(start,{month:'short',day:'numeric'})} – ${dateLabel(addDays(start,6),{month:'short',day:'numeric',year:'numeric'})}`;
   document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===view);b.setAttribute('aria-pressed',String(b.dataset.view===view));});
   const isToday=date=>dayKey(date)===dayKey(now)?' is-today':'';
-  if(view==='week'){
-    $('calendar').innerHTML=`<div class="week-grid">${days.map(date=>{const key=dayKey(date);return `<section class="day-column${isToday(date)}" data-drop="${key}"><div class="day-heading"><span>${dateLabel(date,{weekday:'short'})}</span><button class="day-number" data-day="${key}" aria-label="Open ${dateLabel(date,{dateStyle:'full'})}">${date.getDate()}</button></div><div class="day-tasks">${dayTasks(key).map(t=>card(t)).join('')}</div><button class="day-add" data-add="${key}" aria-label="Add task on ${key}">+</button></section>`;}).join('')}</div>`;
+  if(view==='week'||view==='day'){
+    const visible=view==='day'?[parseDay(selected)]:days,keys=visible.map(dayKey),{cells,untimed}=hourlyRows(tasks,keys);
+    const previous=$('calendar').querySelector('.hourly-scroll'),scroll=previous?.dataset.period===view+keys.join() ? previous.scrollTop:null;
+    if(view==='day')$('range-label').textContent=dateLabel(parseDay(selected),{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+    const cell=(list,i,hour)=>`<div class="hour-cell" data-drop="${keys[i]}">${list.map(t=>card(t)).join('')}<button class="hour-add" data-add="${keys[i]}" ${hour===null?'':`data-hour="${hour}"`} aria-label="Plan a task ${hour===null?'without a time':`at ${hourLabel(hour)}`} on ${keys[i]}">+</button></div>`;
+    $('calendar').innerHTML=`<p class="hourly-note">Hourly blocks · Planned tasks and recorded finish times · Card height does not represent duration</p><div class="hourly-scroll ${view==='day'?'single-day':''}" tabindex="0" aria-label="Hourly calendar, scroll for all 24 hours" data-period="${view+keys.join()}"><div class="hourly-grid" style="--days:${visible.length}"><div class="hour-corner">Time</div>${visible.map(date=>`<section class="day-column day-heading${isToday(date)}"><span>${dateLabel(date,{weekday:'short'})}</span><button class="day-number" data-day="${dayKey(date)}" aria-label="Open ${dateLabel(date,{dateStyle:'full'})}">${date.getDate()}</button></section>`).join('')}${untimed.some(list=>list.length)?`<div class="hour-label untimed-label">No time</div>${untimed.map((list,i)=>cell(list,i,null)).join('')}`:''}${cells.map((row,hour)=>`<div class="hour-label" data-hour-row="${hour}">${hourLabel(hour)}</div>${row.map((list,i)=>cell(list,i,hour)).join('')}`).join('')}</div></div>`;
+    const area=$('calendar').querySelector('.hourly-scroll');
+    const first=cells.findIndex(row=>row.some(list=>list.length));
+    area.scrollTop=scroll??Math.max(0,($('calendar').querySelector(`[data-hour-row="${first<0?8:first}"]`)?.offsetTop||0)-80);
   }else if(view==='month'){
     $('calendar').innerHTML=`<div class="month-grid">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day=>`<div class="month-label">${day}</div>`).join('')}${monthDays(cursor).map(date=>{const key=dayKey(date);return `<section class="month-cell${date.getMonth()!==cursor.getMonth()?' outside':''}${isToday(date)}" data-drop="${key}"><button class="day-number" data-day="${key}" aria-label="Open ${dateLabel(date,{dateStyle:'full'})}">${date.getDate()}</button>${dayTasks(key).map(t=>card(t,true)).join('')}</section>`;}).join('')}</div>`;
   }else{
@@ -87,8 +95,8 @@ function openTask(id=null,date=selected){
 document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.task){openTask(b.dataset.task);return;}
-  if(b.hasAttribute('data-add')){openTask(null,b.dataset.add);return;}
-  if(b.dataset.day){selected=b.dataset.day;cursor=parseDay(selected);view='agenda';render();return;}
+  if(b.hasAttribute('data-add')){openTask(null,b.dataset.add);if(b.dataset.hour!==undefined){$('task-time').value=String(b.dataset.hour).padStart(2,'0')+':00';$('task-options').open=true;}return;}
+  if(b.dataset.day){selected=b.dataset.day;cursor=parseDay(selected);view='day';render();return;}
   if(b.dataset.view){view=b.dataset.view;render();return;}
   if(b.dataset.page){page=b.dataset.page;render();return;}
   if(b.dataset.approve||b.dataset.return){const id=b.dataset.approve||b.dataset.return;const approve=!!b.dataset.approve;change(approve?'Task approved and completed':'Changes requested',list=>list.map(t=>t.id===id?event({...t,status:approve?'done':'planned'},approve?(globalThis.relaySession?'Reviewed locally; no external publication':'Approved in demo'):'Changes requested'):t));}
@@ -107,7 +115,7 @@ $('task-form').onsubmit=e=>{
 for(const id of ['task-title','task-link'])$(id).oninput=()=>$(id).setCustomValidity('');
 $('delete-task').onclick=()=>{change('Task deleted',list=>list.filter(t=>t.id!==editing));$('task-dialog').close();};
 $('today').onclick=()=>{cursor=new Date(now);selected=dayKey(now);render();};
-function move(direction){if(view==='month'){cursor=new Date(cursor.getFullYear(),cursor.getMonth()+direction,1,12);}else cursor=addDays(cursor,7*direction);selected=dayKey(cursor);render();}
+function move(direction){if(view==='month'){cursor=new Date(cursor.getFullYear(),cursor.getMonth()+direction,1,12);}else cursor=addDays(cursor,(view==='day'?1:7)*direction);selected=dayKey(cursor);render();}
 $('previous').onclick=()=>move(-1);$('next').onclick=()=>move(1);
 $('queue-toggle').onclick=()=>{const open=$('queue').classList.toggle('open');$('queue-toggle').setAttribute('aria-expanded',String(open));if(open)$('queue').scrollIntoView({behavior:'smooth',block:'nearest'});};
 $('undo').onclick=()=>{if(!undoState)return;if(globalThis.relaySession){const previous=structuredClone(undoState);return change('Change undone',()=>previous);}tasks=undoState;undoState=null;persist();render();notify('Change undone',false);};

@@ -6,6 +6,8 @@ Employees plan work, record what they actually did, and submit weekly timesheets
 
 ## Current implementation
 
+Week and Day views group work into 24 hourly blocks. Each card shows its planned time or recorded finish time in the receipt's timezone. Tasks without a time appear separately. Blocks expand for simultaneous reports; card height represents neither duration nor employee hours. The plus button in an hour preselects that date and time. Month and Agenda views remain available.
+
 Imported activity cards support private display-title edits. The owner can rename a card for later review; its original result, agent and execution timestamps remain unchanged. The display title is stored inside the encrypted schedule, separately from the append-only encrypted receipt.
 
 Interactive browser-local calendar prototype: week/month views, phone agenda, task editing and rescheduling, unscheduled queue, human/agent assignments, simulated task review, undo and local saving. All sample content is synthetic.

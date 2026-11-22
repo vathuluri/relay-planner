@@ -43,3 +43,15 @@ main{margin-left:196px;padding:0 26px}.topbar{height:69px}.breadcrumb{color:#788
 
 #account-submit{width:100%}#account-gate .button{min-height:44px}
 .receipt-integrity-warning{margin:12px 0;padding:12px 14px;border:1px solid #fcd34d;border-radius:10px;background:#fffbeb;color:#92400e;font-size:12px;line-height:1.5}.receipt-integrity-warning[hidden]{display:none}
+/* Hour cells grow to keep simultaneous reports readable; height is not duration. */
+.hourly-note{font-size:10px;color:var(--muted);padding:10px 12px;margin:0;border-bottom:1px solid var(--line)}
+.hourly-scroll{position:relative;max-height:68vh;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.hourly-grid{display:grid;grid-template-columns:60px repeat(var(--days),minmax(120px,1fr));min-width:900px;align-items:stretch}
+.hourly-grid .day-heading{position:sticky;top:0;z-index:3;margin:0;min-height:70px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:4px}
+.hour-corner{position:sticky;top:0;left:0;z-index:4;background:#fbfcff;padding:20px 6px;color:var(--muted);font-size:10px;border-bottom:1px solid var(--line)}
+.hour-label{position:sticky;left:0;z-index:2;background:#fbfcff;border-bottom:1px solid var(--line);padding:9px 6px;font-size:10px;color:#6b7c95;min-height:100px}
+.hour-cell{min-width:0;min-height:100px;padding:5px;border-left:1px solid var(--line);border-bottom:1px solid var(--line);background:linear-gradient(transparent 49%,#f3f5f9 50%,transparent 51%);display:flex;flex-direction:column;gap:5px}
+.hour-cell .task-card{width:100%;text-align:left;margin:0;flex-shrink:0}.hour-cell .task-time{margin-bottom:3px}.hour-cell .task-title{font-size:11px;line-height:1.45}.hour-cell .task-status{margin-top:4px}.hour-cell .task-owner{margin-top:4px}
+.hour-add{border:0;background:#f7f9fd;color:#6b7c95;border-radius:4px;min-height:26px;width:100%;margin-top:auto;font-size:15px}.hour-add:hover{background:#eaf1ff;color:var(--blue)}
+.hourly-scroll.single-day .hourly-grid{min-width:0;grid-template-columns:60px minmax(0,1fr)}
+@media(max-width:760px){.hourly-note{font-size:9px;padding:8px}.hourly-scroll{max-height:65vh}.segmented button{padding:7px 10px}.hourly-scroll.single-day .hourly-grid{grid-template-columns:48px minmax(0,1fr)}.hourly-grid .day-heading{min-height:60px}.hour-cell .task-title{font-size:12px}}

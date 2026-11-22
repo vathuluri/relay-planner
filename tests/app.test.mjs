@@ -16,6 +16,15 @@ test('demo supports task creation, local saving, review, undo and calendar views
     await import('../public/app.js');
     const click=selector=>{const element=document.querySelector(selector);assert.ok(element,selector);element.click();};
     assert.equal(document.querySelectorAll('.day-column').length,7);
+    assert.equal(document.querySelectorAll('[data-hour-row]').length,24);
+    click('[data-view="day"]');
+    assert.equal(document.querySelectorAll('.day-column').length,1);
+    click('.hour-add[data-hour="14"]');
+    assert.equal(document.querySelector('#task-time').value,'14:00');
+    click('#cancel-dialog');
+    const prior=document.querySelector('#range-label').textContent;click('#next');
+    assert.notEqual(document.querySelector('#range-label').textContent,prior);
+    click('#today');click('[data-view="week"]');
     click('#new-task');assert.equal(document.querySelector('#task-dialog').open,true);
     assert.equal(document.querySelector('#task-options').open,false);
     assert.equal(document.querySelector('#task-time').value,'');
@@ -40,6 +49,8 @@ test('demo supports task creation, local saving, review, undo and calendar views
     click('[data-page="calendar"]');click('[data-view="month"]');
     assert.equal(document.querySelectorAll('.month-cell').length,42);
     click('.month-cell .day-number');
+    assert.ok(document.querySelector('.hourly-scroll.single-day'));
+    click('[data-view="agenda"]');
     assert.ok(document.querySelector('.agenda-strip'));assert.ok(document.querySelector('.agenda-list'));
     click('#add-idea');document.querySelector('#task-title').value='Queued synthetic idea';
     document.querySelector('#task-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
