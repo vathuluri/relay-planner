@@ -16,7 +16,7 @@ export async function reportEvent(event,{configFile=configPath,directory=dataDir
  let record;try{record=JSON.parse(await readFile(pending,'utf8'));}catch{try{record=JSON.parse(await readFile(sent,'utf8'));}catch{}}
  if(record&&record.digest!==digest)throw Error('This run ID already has a different receipt.');
  if(!record){record={digest,packet:await encryptActivity(config,event)};await atomicJSON(pending,record);}
- try{await sendActivity(config,record.packet,fetcher);await atomicJSON(sent,record);await unlink(pending).catch(()=>{});return {reported:true};}catch{return {reported:false,queued:true};}
+ try{await sendActivity(config,record.packet,fetcher);await atomicJSON(sent,record);await unlink(pending).catch(()=>{});return {reported:true};}catch(error){return {reported:false,queued:true,error: /^Reporting failed: HTTP [0-9]{3}$/.test(error.message)?error.message:'Network or local receipt storage unavailable.'};}
 }
 export async function flushReports({configFile=configPath,directory=dataDir,fetcher=fetch}={}){
  const config=JSON.parse(await readFile(configFile,'utf8')),queue=join(directory,'outbox');await mkdir(queue,{recursive:true});let count=0;

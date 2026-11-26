@@ -4,6 +4,7 @@ const hash=v=>createHash('sha256').update(v).digest('hex');
 const base={'Cache-Control':'private, no-store','Vary':'Cookie, Authorization','X-Content-Type-Options':'nosniff'};
 const reply=(data,status=200)=>Response.json(data,{status,headers:base});
 export const feedKey=id=>'users/'+encodeURIComponent(id)+'/activity';
+export const reportingStatusKey=id=>'users/'+encodeURIComponent(id)+'/reporting-status';
 export const encryptedFeedKey=id=>'users/'+encodeURIComponent(id)+'/encrypted-activity';
 const ownerKey=id=>'users/'+encodeURIComponent(id)+'/reporting-key';
 async function json(req,max=16000){const text=await req.text();if(Buffer.byteLength(text)>max)throw Error('Too large');return JSON.parse(text);}
@@ -48,10 +49,10 @@ export function createActivityHandler({getStore,now=()=>Date.now()}){return asyn
   for(let attempt=0;attempt<5;attempt++){
    const feed=await store.getWithMetadata(encryptedFeedKey(accountId),{type:'json',consistency:'strong'}),records=feed?.data?.records??[];
    const old=records.find(r=>r.id===body.id);if(old)return old.fingerprint===fingerprint?reply({accepted:true,duplicate:true}):reply({error:'Run ID already used.'},409);
-   if(records.length>=500)return reply({error:'Activity history is full.'},429);
-   const result=await store.setJSON(encryptedFeedKey(accountId),{records:[...records,{id:body.id,keyId:body.keyId,envelope,fingerprint}]},feed?{onlyIfMatch:feed.etag}:{onlyIfNew:true});
+   const result=await store.setJSON(encryptedFeedKey(accountId),{lastAcceptedAt:new Date(now()).toISOString(),records:[...records,{id:body.id,keyId:body.keyId,envelope,fingerprint}]},feed?{onlyIfMatch:feed.etag}:{onlyIfNew:true});
    if(result.modified)return reply({accepted:true,duplicate:false},201);
   }
+  await store.setJSON(reportingStatusKey(accountId),{state:'retrying',at:new Date(now()).toISOString()}).catch(()=>{});
   return reply({error:'Busy. Retry the same encrypted receipt.'},409);
  }catch{return reply({error:'Reporting unavailable.'},503);}
 };}

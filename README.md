@@ -6,6 +6,9 @@ Employees plan work, record what they actually did, and submit weekly timesheets
 
 ## Current implementation
 
+Encrypted agent history no longer stops at 500 reports. Exact ciphertext retries retain their original IDs and deduplicate on the server. The calendar warns when refreshing fails, the receiver reports a retry backlog, or no report has arrived for over 24 hours. A quiet agent can also trigger the last warning; it is not proof of lost work. History still loads as a single encrypted feed; paginated storage and loading remain future work.
+
+
 Week and Day views group work into 24 hourly blocks. Each card shows its planned time or recorded finish time in the receipt's timezone. Tasks without a time appear separately. Blocks expand for simultaneous reports; card height represents neither duration nor employee hours. The plus button in an hour preselects that date and time. Month and Agenda views remain available.
 
 Compact cards show time and a single-line title in smaller hourly rows. Expanded cards also show owner and status. Select either above the grid; the browser remembers this display preference. Open a card in either mode for its full details.

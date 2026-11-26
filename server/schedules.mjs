@@ -1,4 +1,4 @@
-import {feedKey,encryptedFeedKey} from './activity.mjs';
+import {feedKey,encryptedFeedKey,reportingStatusKey} from './activity.mjs';
 import {FORMAT,validateEnvelope,validateKeys,validatePasskey} from './envelopes.mjs';
 const projects=new Set(['launch','engineering','content']);
 const owners=new Set(['human','code','research','writing','automation']);
@@ -29,7 +29,7 @@ export function createScheduleHandler({getUser,getStore}){return async req=>{
   const store=getStore();
   if(req.method==='GET'){
    const found=await store.getWithMetadata(key,{type:'json',consistency:'strong'});
-   if(found?.data?.format===FORMAT){const feed=await store.getWithMetadata(encryptedFeedKey(user.id),{type:'json',consistency:'strong'});return reply({vault:found.data,version:found.etag,accountId:user.id,feed:feed?.data?.records??[],feedVersion:feed?.etag??null});}
+   if(found?.data?.format===FORMAT){const feed=await store.getWithMetadata(encryptedFeedKey(user.id),{type:'json',consistency:'strong'});const status=await store.getWithMetadata(reportingStatusKey(user.id),{type:'json',consistency:'strong'});return reply({vault:found.data,version:found.etag,accountId:user.id,feed:feed?.data?.records??[],feedVersion:feed?.etag??null,reporting:{lastAcceptedAt:feed?.data?.lastAcceptedAt??null,retrying:!!status?.data?.at&&status.data.at>(feed?.data?.lastAcceptedAt??'')}});}
    const feed=await store.getWithMetadata(feedKey(user.id),{type:'json',consistency:'strong'});
    return reply({migrationRequired:true,tasks:[...(found?.data?.tasks??[]),...(feed?.data?.records??[]).map(r=>r.task)],version:found?.etag??null,accountId:user.id,feedVersion:feed?.etag??null});
   }

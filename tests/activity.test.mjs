@@ -26,3 +26,17 @@ test('reporter sends only ciphertext over HTTPS and validates real timestamps be
  await sendActivity(c,packet,async(url,options)=>{sent=options.body;return Response.json({accepted:true});});assert.ok(!sent.includes(event().title));assert.ok(!sent.includes('completedAt'));
  await assert.rejects(()=>sendActivity({...c,endpoint:'http://relay.example'},packet));await assert.rejects(()=>encryptActivity(c,{...event(),completedAt:'yesterday'}));assert.equal(taskTimeLabel({status:'done',time:''}),'Time not recorded');
 });
+
+test('a full 500-report history accepts 74 queued packets and exact retries add no duplicates',async()=>{
+ const f=fixture(),c=await connect(f);
+ for(let i=0;i<500;i++){
+  const packet=await encryptActivity(c,event('history-'+i));
+  assert.equal((await f.activity(req('POST',packet,c.token))).status,201);
+ }
+ const pending=await Promise.all(Array.from({length:74},(_,i)=>encryptActivity(c,event('queued-'+i))));
+ for(const packet of pending)assert.equal((await f.activity(req('POST',packet,c.token))).status,201);
+ for(const packet of pending){const response=await f.activity(req('POST',packet,c.token));assert.equal(response.status,200);assert.equal((await response.json()).duplicate,true);}
+ const feed=f.map.get(encryptedFeedKey('alice')).data;
+ assert.equal(feed.records.length,574);assert.equal(new Set(feed.records.map(r=>r.id)).size,574);
+ assert.ok(Number.isFinite(Date.parse(feed.lastAcceptedAt)));
+});
